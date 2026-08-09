@@ -78,7 +78,7 @@ function NavigationBar() {
         {/* Navigation Links */}
         <nav className="nav-links" style={{ display: 'flex', gap: '1.5rem' }}>
           <Link to="/home-page" className="nav-item">Home</Link>
-          <Link to="/complete-profile" className="nav-item">Profile</Link>
+          <Link to="/student" className="nav-item">Profile</Link>
           
           {/* Admin Panel button visible ONLY to users with 'admin' role */}
           {profile?.role === 'admin' && (
