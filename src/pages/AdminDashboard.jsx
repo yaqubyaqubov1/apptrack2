@@ -6,7 +6,6 @@ import {
   User,
   Shield,
   Bell,
-  LogOut,
   Search,
   Lock,
   Globe,
@@ -14,7 +13,6 @@ import {
   Info
 } from 'lucide-react'
 
-// --- Mock Data Matching Design ---
 const majorData = [
   { name: 'Computer Science', value: 50, color: '#8b5cf6' },
   { name: 'Chemical Engineering', value: 17, color: '#06b6d4' },
@@ -63,183 +61,165 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div style={{ backgroundColor: '#f3f4f6', minHeight: '100vh', padding: '1.5rem 3rem', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+    <div style={{ backgroundColor: '#f8fafc', minHeight: '100vh', padding: '1.5rem 2.5rem', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
       
-      {/* ── Top Header Navigation Bar ──────────────────────────────── */}
+      {/* Navigation Top Header Bar */}
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-        
-        {/* Navigation Tabs */}
-        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
           <Link to="/home-page" style={navTabStyle(false)}>
-            <Home size={16} />
-            Home
+            <Home size={15} /> Home
           </Link>
           <Link to="/student" style={navTabStyle(false)}>
-            <User size={16} />
-            Profile
+            <User size={15} /> Profile
           </Link>
           <Link to="/admin" style={navTabStyle(true)}>
-            <Shield size={16} />
-            Admin Panel
+            <Shield size={15} /> Admin Panel
           </Link>
         </div>
 
-        {/* Action Buttons */}
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
           <button style={actionBtnStyle}>
-            <Bell size={16} />
-            Notifications
-            <span style={{ backgroundColor: '#ef4444', color: '#fff', fontSize: '0.75rem', padding: '0.1rem 0.4rem', borderRadius: '999px', fontWeight: 'bold' }}>3</span>
+            <Bell size={15} /> Notifications
+            <span style={{ backgroundColor: '#ef4444', color: '#fff', fontSize: '0.75rem', padding: '0.1rem 0.45rem', borderRadius: '999px', fontWeight: 'bold' }}>3</span>
           </button>
-          <button style={{ ...actionBtnStyle, backgroundColor: '#fff' }}>
+          <button style={actionBtnStyle}>
             Sign out
           </button>
         </div>
       </header>
 
-      {/* Main Title */}
-      <h1 style={{ fontSize: '2rem', fontWeight: 800, color: '#111827', marginBottom: '1.5rem' }}>
-        Student Manager
-      </h1>
+      {/* Main Page Content Container */}
+      <div style={{ maxWidth: '1280px', margin: '0 auto' }}>
+        <h1 style={{ fontSize: '2.25rem', fontWeight: 800, color: '#0f172a', marginBottom: '1.5rem', letterSpacing: '-0.02em' }}>
+          Student Manager
+        </h1>
 
-      {/* ── Donut Charts Section ───────────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.25rem', marginBottom: '2rem' }}>
-        
-        {/* Major Distribution */}
-        <ChartCard title="Major Distribution">
-          <DonutChart data={majorData} innerRadius={35} outerRadius={55} />
-          <ChartLegend items={majorData} />
-        </ChartCard>
+        {/* Charts Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.25rem', marginBottom: '1.5rem' }}>
+          <ChartCard title="Major Distribution">
+            <DonutChart data={majorData} innerRadius={35} outerRadius={55} />
+            <ChartLegend items={majorData} />
+          </ChartCard>
 
-        {/* University Distribution */}
-        <ChartCard title="University Distribution">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', margin: '1rem 0' }}>
-            {universityData.map((item, idx) => (
-              <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', backgroundColor: '#f8fafc', padding: '0.5rem 0.75rem', borderRadius: '0.5rem', fontSize: '0.875rem' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: item.color }} />
-                  {item.name}
-                </span>
-                <strong>{item.value}%</strong>
+          <ChartCard title="University Distribution">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', margin: '0.75rem 0' }}>
+              {universityData.map((item, idx) => (
+                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', backgroundColor: '#f8fafc', padding: '0.4rem 0.65rem', borderRadius: '0.5rem', fontSize: '0.825rem' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: item.color }} />
+                    {item.name}
+                  </span>
+                  <strong>{item.value}%</strong>
+                </div>
+              ))}
+            </div>
+          </ChartCard>
+
+          <ChartCard title="Gender Distribution">
+            <DonutChart data={genderData} innerRadius={35} outerRadius={55} centerLabel="100%" />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.75rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', fontWeight: 600 }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#8b5cf6' }} /> Male 100%
               </div>
-            ))}
-          </div>
-          <ChartLegend items={universityData} />
-        </ChartCard>
-
-        {/* Gender Distribution */}
-        <ChartCard title="Gender Distribution">
-          <DonutChart data={genderData} innerRadius={35} outerRadius={55} centerLabel="100%" />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '1rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', fontWeight: 600 }}>
-              <span style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: '#8b5cf6' }} />
-              Male 100%
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: '#64748b' }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', border: '1px solid #94a3b8' }} /> Female 0%
+              </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: '#64748b' }}>
-              <span style={{ width: 10, height: 10, borderRadius: '50%', border: '1px solid #94a3b8' }} />
-              Female 0%
+          </ChartCard>
+
+          <ChartCard title="Decision Rate">
+            <DonutChart data={decisionData} innerRadius={35} outerRadius={55} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', fontSize: '0.825rem' }}>
+              <LegendRow color="#06b6d4" label="Accepted" value="67%" />
+              <LegendRow color="#eab308" label="Waitlisted" value="17%" hasTooltip />
+              <LegendRow color="#8b5cf6" label="Pending" value="17%" />
             </div>
-          </div>
-        </ChartCard>
-
-        {/* Decision Rate */}
-        <ChartCard title="Decision Rate">
-          <DonutChart data={decisionData} innerRadius={35} outerRadius={55} />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', fontSize: '0.85rem' }}>
-            <LegendRow color="#06b6d4" label="Accepted" value="67%" />
-            <LegendRow color="#eab308" label="Waitlisted" value="17%" hasTooltip />
-            <LegendRow color="#8b5cf6" label="Pending" value="17%" />
-          </div>
-        </ChartCard>
-
-      </div>
-
-      {/* ── Search & Filter Controls Section ──────────────────────── */}
-      <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-        <div style={{ position: 'relative', flex: 1, minWidth: '220px' }}>
-          <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-          <input
-            type="text"
-            placeholder="Search by name..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            style={filterInputStyle}
-          />
+          </ChartCard>
         </div>
 
-        <select value={selectedMajor} onChange={(e) => setSelectedMajor(e.target.value)} style={selectStyle}>
-          <option value="">All Majors</option>
-          <option value="Bioscience">Bioscience</option>
-          <option value="Computer Science">Computer Science</option>
-        </select>
+        {/* Filter Controls */}
+        <div style={{ backgroundColor: '#ffffff', padding: '0.75rem 1rem', borderRadius: '1rem', border: '1px solid #f1f5f9', display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '1.5rem', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+          <div style={{ position: 'relative', flex: 1 }}>
+            <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+            <input
+              type="text"
+              placeholder="Search by name..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={filterInputStyle}
+            />
+          </div>
 
-        <select value={selectedUniversity} onChange={(e) => setSelectedUniversity(e.target.value)} style={selectStyle}>
-          <option value="">All Universities</option>
-          <option value="NYU">NYU</option>
-          <option value="Glasgow">Glasgow</option>
-        </select>
+          <select value={selectedMajor} onChange={(e) => setSelectedMajor(e.target.value)} style={selectStyle}>
+            <option value="">All Majors</option>
+            <option value="Bioscience">Bioscience</option>
+            <option value="Computer Science">Computer Science</option>
+          </select>
 
-        <select value={selectedGender} onChange={(e) => setSelectedGender(e.target.value)} style={selectStyle}>
-          <option value="">All Genders</option>
-          <option value="Male">Male</option>
-          <option value="Female">Female</option>
-        </select>
+          <select value={selectedUniversity} onChange={(e) => setSelectedUniversity(e.target.value)} style={selectStyle}>
+            <option value="">All Universities</option>
+            <option value="NYU">NYU</option>
+            <option value="Glasgow">Glasgow</option>
+          </select>
 
-        <select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value)} style={selectStyle}>
-          <option value="">All Statuses</option>
-          <option value="Accepted">Accepted</option>
-          <option value="Waitlisted">Waitlisted</option>
-        </select>
+          <select value={selectedGender} onChange={(e) => setSelectedGender(e.target.value)} style={selectStyle}>
+            <option value="">All Genders</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+          </select>
 
-        <button onClick={handleResetFilters} style={resetBtnStyle}>
-          Reset Filters
-        </button>
-      </div>
+          <select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value)} style={selectStyle}>
+            <option value="">All Statuses</option>
+            <option value="Accepted">Accepted</option>
+            <option value="Waitlisted">Waitlisted</option>
+          </select>
 
-      {/* ── Student Cards Grid ────────────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.25rem', marginBottom: '2.5rem' }}>
-        {studentsList.map((student) => (
-          <div key={student.id} style={studentCardStyle}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div>
-                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>{student.name}</h3>
-                <p style={{ margin: '0.25rem 0 0 0', color: '#64748b', fontSize: '0.9rem' }}>{student.major}</p>
-              </div>
+          <button onClick={handleResetFilters} style={resetBtnStyle}>
+            Reset Filters
+          </button>
+        </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
-                <span style={badgeStyle(student.isPrivate)}>
-                  {student.isPrivate ? <Lock size={12} /> : <Globe size={12} />}
-                  {student.isPrivate ? 'Private' : 'Public'}
-                </span>
-                <button style={editButtonStyle}>
-                  <Edit2 size={12} />
-                  Edit
-                </button>
+        {/* Student Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.25rem', marginBottom: '2rem' }}>
+          {studentsList.map((student) => (
+            <div key={student.id} style={studentCardStyle}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>{student.name}</h3>
+                  <p style={{ margin: '0.2rem 0 0 0', color: '#64748b', fontSize: '0.875rem' }}>{student.major}</p>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.4rem' }}>
+                  <span style={badgeStyle(student.isPrivate)}>
+                    {student.isPrivate ? <Lock size={11} /> : <Globe size={11} />}
+                    {student.isPrivate ? 'Private' : 'Public'}
+                  </span>
+                  <button style={editButtonStyle}>
+                    <Edit2 size={11} /> Edit
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
 
-      {/* ── Pagination ────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem', color: '#64748b', fontSize: '0.9rem' }}>
-        <button style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#64748b' }}>Previous</button>
-        <span style={{ backgroundColor: '#8b5cf6', color: '#fff', width: '28px', height: '28px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
-          1
-        </span>
-        <button style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#64748b' }}>Next</button>
+        {/* Pagination */}
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.75rem', color: '#64748b', fontSize: '0.875rem' }}>
+          <button style={paginationBtnStyle}>Previous</button>
+          <span style={{ backgroundColor: '#8b5cf6', color: '#fff', width: '28px', height: '28px', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
+            1
+          </span>
+          <button style={paginationBtnStyle}>Next</button>
+        </div>
       </div>
-
     </div>
   )
 }
 
-// ── Supporting Helper Components & Styles ────────────────────────────
-
 function ChartCard({ title, children }) {
   return (
-    <div style={{ backgroundColor: '#ffffff', borderRadius: '1.25rem', padding: '1.25rem', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.03)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-      <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', fontWeight: 700, textAlign: 'center', color: '#1e293b' }}>{title}</h3>
+    <div style={{ backgroundColor: '#ffffff', borderRadius: '1.25rem', padding: '1.25rem', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.03)', border: '1px solid #f1f5f9' }}>
+      <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '0.95rem', fontWeight: 700, textAlign: 'center', color: '#0f172a' }}>{title}</h3>
       {children}
     </div>
   )
@@ -247,7 +227,7 @@ function ChartCard({ title, children }) {
 
 function DonutChart({ data, innerRadius, outerRadius, centerLabel }) {
   return (
-    <div style={{ width: '100%', height: 130, position: 'relative' }}>
+    <div style={{ width: '100%', height: 120, position: 'relative' }}>
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie data={data} cx="50%" cy="50%" innerRadius={innerRadius} outerRadius={outerRadius} dataKey="value" stroke="none">
@@ -258,7 +238,7 @@ function DonutChart({ data, innerRadius, outerRadius, centerLabel }) {
         </PieChart>
       </ResponsiveContainer>
       {centerLabel && (
-        <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', fontWeight: 700, fontSize: '0.85rem' }}>
+        <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', fontWeight: 700, fontSize: '0.8rem', color: '#0f172a' }}>
           {centerLabel}
         </div>
       )}
@@ -291,7 +271,7 @@ function LegendRow({ color, label, value, hasTooltip }) {
       </span>
       <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontWeight: 600 }}>
         {value}
-        {hasTooltip && <Info size={13} style={{ color: '#64748b', cursor: 'pointer' }} />}
+        {hasTooltip && <Info size={12} style={{ color: '#64748b', cursor: 'pointer' }} />}
       </span>
     </div>
   )
@@ -300,58 +280,58 @@ function LegendRow({ color, label, value, hasTooltip }) {
 const navTabStyle = (isActive) => ({
   display: 'inline-flex',
   alignItems: 'center',
-  gap: '0.5rem',
-  padding: '0.5rem 1.25rem',
-  borderRadius: '0.75rem',
+  gap: '0.4rem',
+  padding: '0.45rem 1rem',
+  borderRadius: '0.6rem',
   backgroundColor: isActive ? '#e2e8f0' : '#ffffff',
-  color: isActive ? '#0f172a' : '#475569',
+  color: isActive ? '#0f172a' : '#64748b',
   fontWeight: isActive ? 700 : 500,
   textDecoration: 'none',
-  fontSize: '0.9rem',
-  boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
+  fontSize: '0.875rem',
+  boxShadow: isActive ? 'none' : '0 1px 3px rgba(0,0,0,0.05)'
 })
 
 const actionBtnStyle = {
   display: 'inline-flex',
   alignItems: 'center',
-  gap: '0.5rem',
-  padding: '0.5rem 1.25rem',
-  borderRadius: '0.75rem',
+  gap: '0.4rem',
+  padding: '0.45rem 1rem',
+  borderRadius: '0.6rem',
   border: '1px solid #e2e8f0',
   backgroundColor: '#ffffff',
   color: '#0f172a',
   fontWeight: 600,
-  fontSize: '0.875rem',
+  fontSize: '0.85rem',
   cursor: 'pointer'
 }
 
 const filterInputStyle = {
   width: '100%',
-  padding: '0.6rem 1rem 0.6rem 2.25rem',
-  borderRadius: '0.75rem',
+  padding: '0.5rem 0.75rem 0.5rem 2.25rem',
+  borderRadius: '0.6rem',
   border: '1px solid #e2e8f0',
-  backgroundColor: '#ffffff',
-  fontSize: '0.875rem',
+  backgroundColor: '#f8fafc',
+  fontSize: '0.85rem',
   outline: 'none'
 }
 
 const selectStyle = {
-  padding: '0.6rem 1rem',
-  borderRadius: '0.75rem',
+  padding: '0.5rem 0.75rem',
+  borderRadius: '0.6rem',
   border: '1px solid #e2e8f0',
   backgroundColor: '#ffffff',
-  fontSize: '0.875rem',
+  fontSize: '0.85rem',
   outline: 'none',
   color: '#334155'
 }
 
 const resetBtnStyle = {
-  padding: '0.6rem 1.25rem',
-  borderRadius: '0.75rem',
-  border: '1px solid #cbd5e1',
+  padding: '0.5rem 1rem',
+  borderRadius: '0.6rem',
+  border: '1px solid #e2e8f0',
   backgroundColor: '#ffffff',
   fontWeight: 600,
-  fontSize: '0.875rem',
+  fontSize: '0.85rem',
   cursor: 'pointer',
   color: '#0f172a'
 }
@@ -367,7 +347,7 @@ const badgeStyle = (isPrivate) => ({
   display: 'inline-flex',
   alignItems: 'center',
   gap: '0.25rem',
-  padding: '0.2rem 0.6rem',
+  padding: '0.15rem 0.5rem',
   borderRadius: '999px',
   backgroundColor: isPrivate ? '#fef3c7' : '#dcfce7',
   color: isPrivate ? '#92400e' : '#166534',
@@ -383,5 +363,13 @@ const editButtonStyle = {
   background: 'none',
   cursor: 'pointer',
   fontSize: '0.75rem',
-  color: '#475569'
+  color: '#64748b'
+}
+
+const paginationBtnStyle = {
+  border: 'none',
+  background: 'none',
+  cursor: 'pointer',
+  color: '#64748b',
+  fontWeight: 500
 }
