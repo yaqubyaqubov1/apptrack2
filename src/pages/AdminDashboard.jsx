@@ -10,9 +10,6 @@ import {
   Pencil,
   Info
 } from 'lucide-react'
-import { Chart, registerables } from 'chart.js'
-
-Chart.register(...registerables)
 
 export default function AdminDashboard() {
   const [searchTerm, setSearchTerm] = useState('')
@@ -22,112 +19,137 @@ export default function AdminDashboard() {
   const [selectedStatus, setSelectedStatus] = useState('')
 
   useEffect(() => {
-    // Custom Center Text Plugin for Chart.js
-    const centerTextPlugin = {
-      id: 'centerText',
-      beforeDraw(chart) {
-        const { width, height, ctx } = chart
-        ctx.restore()
-        const fontSize = (height / 114).toFixed(2)
-        ctx.font = `bold ${fontSize}em sans-serif`
-        ctx.textBaseline = 'middle'
-        ctx.fillStyle = '#0f172a'
+    // Dynamically load Chart.js CDN script if not already present
+    const loadChartJs = () => {
+      if (window.Chart) {
+        initCharts()
+        return
+      }
+      const script = document.createElement('script')
+      script.src = 'https://cdn.jsdelivr.net/npm/chart.js'
+      script.async = true
+      script.onload = () => initCharts()
+      document.body.appendChild(script)
+    }
 
-        const text = chart.config.options.plugins.centerText?.text || ''
-        const textX = Math.round((width - ctx.measureText(text).width) / 2)
-        const textY = height / 2
+    let majorChart, uniChart, genderChart, decisionChart
 
-        ctx.fillText(text, textX, textY)
-        ctx.save()
+    const initCharts = () => {
+      const Chart = window.Chart
+      if (!Chart) return
+
+      const centerTextPlugin = {
+        id: 'centerText',
+        beforeDraw(chart) {
+          const { width, height, ctx } = chart
+          ctx.restore()
+          const fontSize = (height / 114).toFixed(2)
+          ctx.font = `bold ${fontSize}em sans-serif`
+          ctx.textBaseline = 'middle'
+          ctx.fillStyle = '#0f172a'
+
+          const text = chart.config.options.plugins.centerText?.text || ''
+          const textX = Math.round((width - ctx.measureText(text).width) / 2)
+          const textY = height / 2
+
+          ctx.fillText(text, textX, textY)
+          ctx.save()
+        }
+      }
+
+      Chart.register(centerTextPlugin)
+
+      const commonOptions = {
+        cutout: '65%',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { enabled: true }
+        }
+      }
+
+      const majorCtx = document.getElementById('majorChart')
+      if (majorCtx) {
+        majorChart = new Chart(majorCtx, {
+          type: 'doughnut',
+          data: {
+            labels: ['Computer Science', 'Chemical Engineering', 'Bioscience'],
+            datasets: [{
+              data: [50, 17, 33],
+              backgroundColor: ['#8b5cf6', '#06b6d4', '#10b981'],
+              borderWidth: 0
+            }]
+          },
+          options: {
+            ...commonOptions,
+            plugins: { ...commonOptions.plugins, centerText: { text: '50%' } }
+          }
+        })
+      }
+
+      const uniCtx = document.getElementById('uniChart')
+      if (uniCtx) {
+        uniChart = new Chart(uniCtx, {
+          type: 'doughnut',
+          data: {
+            labels: ['Nanjing University', 'Glasgow', 'NYU'],
+            datasets: [{
+              data: [50, 17, 33],
+              backgroundColor: ['#8b5cf6', '#06b6d4', '#10b981'],
+              borderWidth: 0
+            }]
+          },
+          options: commonOptions
+        })
+      }
+
+      const genderCtx = document.getElementById('genderChart')
+      if (genderCtx) {
+        genderChart = new Chart(genderCtx, {
+          type: 'doughnut',
+          data: {
+            labels: ['Male', 'Female'],
+            datasets: [{
+              data: [100, 0],
+              backgroundColor: ['#8b5cf6', '#e2e8f0'],
+              borderWidth: 0
+            }]
+          },
+          options: {
+            ...commonOptions,
+            plugins: { ...commonOptions.plugins, centerText: { text: '100%' } }
+          }
+        })
+      }
+
+      const decisionCtx = document.getElementById('decisionChart')
+      if (decisionCtx) {
+        decisionChart = new Chart(decisionCtx, {
+          type: 'doughnut',
+          data: {
+            labels: ['Accepted', 'Waitlisted', 'Pending'],
+            datasets: [{
+              data: [67, 17, 17],
+              backgroundColor: ['#06b6d4', '#8b5cf6', '#10b981'],
+              borderWidth: 0
+            }]
+          },
+          options: {
+            ...commonOptions,
+            plugins: { ...commonOptions.plugins, centerText: { text: '67%' } }
+          }
+        })
       }
     }
 
-    Chart.register(centerTextPlugin)
-
-    const commonOptions = {
-      cutout: '65%',
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: { enabled: true }
-      }
-    }
-
-    // Chart 1: Major
-    const majorCtx = document.getElementById('majorChart')
-    const majorChart = new Chart(majorCtx, {
-      type: 'doughnut',
-      data: {
-        labels: ['Computer Science', 'Chemical Engineering', 'Bioscience'],
-        datasets: [{
-          data: [50, 17, 33],
-          backgroundColor: ['#8b5cf6', '#06b6d4', '#10b981'],
-          borderWidth: 0
-        }]
-      },
-      options: {
-        ...commonOptions,
-        plugins: { ...commonOptions.plugins, centerText: { text: '50%' } }
-      }
-    })
-
-    // Chart 2: University
-    const uniCtx = document.getElementById('uniChart')
-    const uniChart = new Chart(uniCtx, {
-      type: 'doughnut',
-      data: {
-        labels: ['Nanjing University', 'Glasgow', 'NYU'],
-        datasets: [{
-          data: [50, 17, 33],
-          backgroundColor: ['#8b5cf6', '#06b6d4', '#10b981'],
-          borderWidth: 0
-        }]
-      },
-      options: commonOptions
-    })
-
-    // Chart 3: Gender
-    const genderCtx = document.getElementById('genderChart')
-    const genderChart = new Chart(genderCtx, {
-      type: 'doughnut',
-      data: {
-        labels: ['Male', 'Female'],
-        datasets: [{
-          data: [100, 0],
-          backgroundColor: ['#8b5cf6', '#e2e8f0'],
-          borderWidth: 0
-        }]
-      },
-      options: {
-        ...commonOptions,
-        plugins: { ...commonOptions.plugins, centerText: { text: '100%' } }
-      }
-    })
-
-    // Chart 4: Decision
-    const decisionCtx = document.getElementById('decisionChart')
-    const decisionChart = new Chart(decisionCtx, {
-      type: 'doughnut',
-      data: {
-        labels: ['Accepted', 'Waitlisted', 'Pending'],
-        datasets: [{
-          data: [67, 17, 17],
-          backgroundColor: ['#06b6d4', '#8b5cf6', '#10b981'],
-          borderWidth: 0
-        }]
-      },
-      options: {
-        ...commonOptions,
-        plugins: { ...commonOptions.plugins, centerText: { text: '67%' } }
-      }
-    })
+    loadChartJs()
 
     return () => {
-      majorChart.destroy()
-      uniChart.destroy()
-      genderChart.destroy()
-      decisionChart.destroy()
+      if (majorChart) majorChart.destroy()
+      if (uniChart) uniChart.destroy()
+      if (genderChart) genderChart.destroy()
+      if (decisionChart) decisionChart.destroy()
     }
   }, [])
 
@@ -306,8 +328,6 @@ export default function AdminDashboard() {
   )
 }
 
-// ── Helper Styles ─────────────────────────────────────────────────────────────
-
 const navBtnStyle = (isActive) => ({
   display: 'inline-flex',
   alignItems: 'center',
@@ -354,7 +374,7 @@ const legendListStyle = {
 const legendItemStyle = {
   display: 'flex',
   alignItems: 'center',
-  justifyLink: 'space-between',
+  justifyContent: 'space-between',
   gap: '0.5rem',
   fontWeight: 500
 }
