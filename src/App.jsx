@@ -51,19 +51,17 @@ function RootRedirect() {
   if (loading) return <div>Loading...</div>
   if (!user) return <Navigate to="/login" replace />
 
-  // Logged in but profile not yet completed → force complete-profile flow
   if (!profile?.is_profile_completed) {
     return <Navigate to="/complete-profile" replace />
   }
 
-  // Route the user based on their role
   if (profile?.role === 'admin') return <Navigate to="/admin" replace />
   return <Navigate to="/student" replace />
 }
 
 /**
- * Navigation Bar Component
- * Shows navigation links based on user role.
+ * NavigationBar Component
+ * Styled to match the top navigation and header pill buttons in the UI.
  */
 function NavigationBar() {
   const { user, profile, signOut } = useAuth()
@@ -71,27 +69,110 @@ function NavigationBar() {
   if (!user) return null
 
   return (
-    <header className="header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 2rem', background: '#fff', borderBottom: '1px solid #eee' }}>
-      <div className="header-left" style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
-        <h1 style={{ margin: 0, fontSize: '1.25rem' }}>Student Manager</h1>
-        
-        {/* Navigation Links */}
-        <nav className="nav-links" style={{ display: 'flex', gap: '1.5rem' }}>
-          <Link to="/home-page" className="nav-item">Home</Link>
-          <Link to="/student" className="nav-item">Profile</Link>
-          
-          {/* Admin Panel button visible ONLY to users with 'admin' role */}
+    <header
+      style={{
+        display: 'flex',
+        justify: 'space-between',
+        alignItems: 'center',
+        padding: '1.25rem 2.5rem',
+        backgroundColor: '#f8fafc',
+        borderBottom: '1px solid #f1f5f9',
+        fontFamily: 'system-ui, -apple-system, sans-serif'
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: '2.5rem' }}>
+        <h1
+          style={{
+            margin: 0,
+            fontSize: '1.5rem',
+            fontWeight: 800,
+            color: '#0f172a',
+            letterSpacing: '-0.025em'
+          }}
+        >
+          Student Manager
+        </h1>
+
+        <nav style={{ display: 'flex', gap: '1.75rem', alignItems: 'center' }}>
+          <Link
+            to="/home-page"
+            style={{
+              textDecoration: 'none',
+              color: '#475569',
+              fontWeight: 600,
+              fontSize: '0.95rem'
+            }}
+          >
+            Home
+          </Link>
+          <Link
+            to="/student"
+            style={{
+              textDecoration: 'none',
+              color: '#475569',
+              fontWeight: 600,
+              fontSize: '0.95rem'
+            }}
+          >
+            Profile
+          </Link>
+
+          {/* Admin Panel button - visible ONLY to admin role */}
           {profile?.role === 'admin' && (
-            <Link to="/admin" className="nav-item" style={{ fontWeight: 'bold', color: '#2563eb' }}>
+            <Link
+              to="/admin"
+              style={{
+                textDecoration: 'none',
+                color: '#2563eb',
+                fontWeight: 700,
+                fontSize: '0.95rem'
+              }}
+            >
               Admin Panel
             </Link>
           )}
         </nav>
       </div>
 
-      <div className="header-right" style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-        <button className="notifications-btn">🔔 Notifications</button>
-        <button className="signout-btn" onClick={signOut}>Sign out</button>
+      <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+        {/* Styled Pill Buttons matching dashboard controls */}
+        <button
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            padding: '0.6rem 1.25rem',
+            borderRadius: '1rem',
+            border: 'none',
+            backgroundColor: '#1e293b',
+            color: '#ffffff',
+            fontWeight: 600,
+            fontSize: '0.9rem',
+            cursor: 'pointer',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)'
+          }}
+        >
+          🔔 Notifications
+        </button>
+
+        <button
+          onClick={signOut}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            padding: '0.6rem 1.25rem',
+            borderRadius: '1rem',
+            border: 'none',
+            backgroundColor: '#dc2626',
+            color: '#ffffff',
+            fontWeight: 600,
+            fontSize: '0.9rem',
+            cursor: 'pointer',
+            boxShadow: '0 4px 12px rgba(220, 38, 38, 0.2)'
+          }}
+        >
+          Sign out
+        </button>
       </div>
     </header>
   )
@@ -100,18 +181,17 @@ function NavigationBar() {
 /**
  * App
  * ---
- * The top-level component that defines all application routes.
+ * Top-level component defining application routing structure.
  */
 function App() {
   return (
     <>
       <NavigationBar />
       <Routes>
-        {/* Landing / smart redirect */}
         <Route path="/" element={<RootRedirect />} />
         <Route path="/home-page" element={<HomePage />} />
 
-        {/* ── Public routes (guests only) ─────────────────────────── */}
+        {/* Public routes (guests only) */}
         <Route
           path="/login"
           element={
@@ -129,7 +209,7 @@ function App() {
           }
         />
 
-        {/* ── Protected route (any authenticated user) ────────────── */}
+        {/* Protected route */}
         <Route
           path="/complete-profile"
           element={
@@ -139,7 +219,7 @@ function App() {
           }
         />
 
-        {/* ── Role-based routes ───────────────────────────────────── */}
+        {/* Role-based routes */}
         <Route
           path="/student"
           element={
@@ -164,5 +244,7 @@ function App() {
     </>
   )
 }
+
+export default App
 
 export default App
