@@ -1,6 +1,5 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
 import {
   Home,
   User,
@@ -8,368 +7,374 @@ import {
   Bell,
   Search,
   Lock,
-  Globe,
-  Edit2,
+  Pencil,
   Info
 } from 'lucide-react'
+import { Chart, registerables } from 'chart.js'
 
-const majorData = [
-  { name: 'Computer Science', value: 50, color: '#8b5cf6' },
-  { name: 'Chemical Engineering', value: 17, color: '#06b6d4' },
-  { name: 'Bioscience', value: 33, color: '#22c55e' }
-]
-
-const universityData = [
-  { name: 'Nanjing University', value: 50, color: '#8b5cf6' },
-  { name: 'Glasgow', value: 17, color: '#06b6d4' },
-  { name: 'NYU', value: 33, color: '#22c55e' }
-]
-
-const genderData = [
-  { name: 'Male', value: 100, color: '#8b5cf6' },
-  { name: 'Female', value: 0, color: '#e2e8f0' }
-]
-
-const decisionData = [
-  { name: 'Accepted', value: 67, color: '#06b6d4' },
-  { name: 'Waitlisted', value: 17, color: '#eab308' },
-  { name: 'Pending', value: 17, color: '#8b5cf6' }
-]
-
-const studentsList = [
-  { id: 1, name: 'Aykhan Khudaverdiyev', major: 'Bioscience', isPrivate: true },
-  { id: 2, name: 'Narana Mansoh', major: 'Bioscience', isPrivate: true },
-  { id: 3, name: 'Suhasen Derau', major: 'Bioscience', isPrivate: false },
-  { id: 4, name: 'Aykhan Khudaverdiyev', major: 'Bioscience', isPrivate: true },
-  { id: 5, name: 'Ronaldd Mansoh', major: 'Bioscience', isPrivate: true },
-  { id: 6, name: 'Suhasen Derau', major: 'Bioscience', isPrivate: false }
-]
+Chart.register(...registerables)
 
 export default function AdminDashboard() {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedMajor, setSelectedMajor] = useState('')
-  const [selectedUniversity, setSelectedUniversity] = useState('')
+  const [selectedUni, setSelectedUni] = useState('')
   const [selectedGender, setSelectedGender] = useState('')
   const [selectedStatus, setSelectedStatus] = useState('')
 
-  const handleResetFilters = () => {
+  useEffect(() => {
+    // Custom Center Text Plugin for Chart.js
+    const centerTextPlugin = {
+      id: 'centerText',
+      beforeDraw(chart) {
+        const { width, height, ctx } = chart
+        ctx.restore()
+        const fontSize = (height / 114).toFixed(2)
+        ctx.font = `bold ${fontSize}em sans-serif`
+        ctx.textBaseline = 'middle'
+        ctx.fillStyle = '#0f172a'
+
+        const text = chart.config.options.plugins.centerText?.text || ''
+        const textX = Math.round((width - ctx.measureText(text).width) / 2)
+        const textY = height / 2
+
+        ctx.fillText(text, textX, textY)
+        ctx.save()
+      }
+    }
+
+    Chart.register(centerTextPlugin)
+
+    const commonOptions = {
+      cutout: '65%',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { enabled: true }
+      }
+    }
+
+    // Chart 1: Major
+    const majorCtx = document.getElementById('majorChart')
+    const majorChart = new Chart(majorCtx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Computer Science', 'Chemical Engineering', 'Bioscience'],
+        datasets: [{
+          data: [50, 17, 33],
+          backgroundColor: ['#8b5cf6', '#06b6d4', '#10b981'],
+          borderWidth: 0
+        }]
+      },
+      options: {
+        ...commonOptions,
+        plugins: { ...commonOptions.plugins, centerText: { text: '50%' } }
+      }
+    })
+
+    // Chart 2: University
+    const uniCtx = document.getElementById('uniChart')
+    const uniChart = new Chart(uniCtx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Nanjing University', 'Glasgow', 'NYU'],
+        datasets: [{
+          data: [50, 17, 33],
+          backgroundColor: ['#8b5cf6', '#06b6d4', '#10b981'],
+          borderWidth: 0
+        }]
+      },
+      options: commonOptions
+    })
+
+    // Chart 3: Gender
+    const genderCtx = document.getElementById('genderChart')
+    const genderChart = new Chart(genderCtx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Male', 'Female'],
+        datasets: [{
+          data: [100, 0],
+          backgroundColor: ['#8b5cf6', '#e2e8f0'],
+          borderWidth: 0
+        }]
+      },
+      options: {
+        ...commonOptions,
+        plugins: { ...commonOptions.plugins, centerText: { text: '100%' } }
+      }
+    })
+
+    // Chart 4: Decision
+    const decisionCtx = document.getElementById('decisionChart')
+    const decisionChart = new Chart(decisionCtx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Accepted', 'Waitlisted', 'Pending'],
+        datasets: [{
+          data: [67, 17, 17],
+          backgroundColor: ['#06b6d4', '#8b5cf6', '#10b981'],
+          borderWidth: 0
+        }]
+      },
+      options: {
+        ...commonOptions,
+        plugins: { ...commonOptions.plugins, centerText: { text: '67%' } }
+      }
+    })
+
+    return () => {
+      majorChart.destroy()
+      uniChart.destroy()
+      genderChart.destroy()
+      decisionChart.destroy()
+    }
+  }, [])
+
+  const resetFilters = () => {
     setSearchTerm('')
     setSelectedMajor('')
-    setSelectedUniversity('')
+    setSelectedUni('')
     setSelectedGender('')
     setSelectedStatus('')
   }
 
+  const students = [
+    { id: 1, name: 'Aykhan Khudaverdiyev', major: 'Bioscience', isPrivate: true },
+    { id: 2, name: 'Narana Mansoh', major: 'Bioscience', isPrivate: true },
+    { id: 3, name: 'Suhasen Derau', major: 'Bioscience', isPrivate: false },
+    { id: 4, name: 'Aykhan Khudaverdiyev', major: 'Bioscience', isPrivate: true },
+    { id: 5, name: 'Ronaldd Mansoh', major: 'Bioscience', isPrivate: true },
+    { id: 6, name: 'Suhasen Derau', major: 'Bioscience', isPrivate: false }
+  ]
+
+  const filteredStudents = students.filter(student =>
+    student.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
+    (selectedMajor === '' || student.major === selectedMajor) &&
+    (selectedStatus === '' || (selectedStatus === 'Private' ? student.isPrivate : !student.isPrivate))
+  )
+
   return (
-    <div style={{ backgroundColor: '#f8fafc', minHeight: '100vh', padding: '1.5rem 2.5rem', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-      
-      {/* Navigation Top Header Bar */}
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-          <Link to="/home-page" style={navTabStyle(false)}>
-            <Home size={15} /> Home
-          </Link>
-          <Link to="/student" style={navTabStyle(false)}>
-            <User size={15} /> Profile
-          </Link>
-          <Link to="/admin" style={navTabStyle(true)}>
-            <Shield size={15} /> Admin Panel
-          </Link>
-        </div>
+    <div style={{ backgroundColor: '#f3f4f8', minHeight: '100vh', padding: '2rem', fontFamily: 'system-ui, sans-serif' }}>
+      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+        
+        {/* Top Header Navigation */}
+        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+          <div style={{ display: 'flex', gap: '0.75rem' }}>
+            <Link to="/home-page" style={navBtnStyle(false)}><Home size={16} /> Home</Link>
+            <Link to="/student" style={navBtnStyle(false)}><User size={16} /> Profile</Link>
+            <Link to="/admin" style={navBtnStyle(true)}><Shield size={16} /> Admin Panel</Link>
+          </div>
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+            <button style={navBtnStyle(false)}>
+              <Bell size={16} /> Notifications
+              <span style={{ backgroundColor: '#ef4444', color: '#fff', borderRadius: '9999px', padding: '0.1rem 0.5rem', fontSize: '0.75rem', fontWeight: 'bold' }}>3</span>
+            </button>
+            <button style={{ ...navBtnStyle(false), fontWeight: 600, color: '#0f172a' }}>Sign out</button>
+          </div>
+        </header>
 
-        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-          <button style={actionBtnStyle}>
-            <Bell size={15} /> Notifications
-            <span style={{ backgroundColor: '#ef4444', color: '#fff', fontSize: '0.75rem', padding: '0.1rem 0.45rem', borderRadius: '999px', fontWeight: 'bold' }}>3</span>
-          </button>
-          <button style={actionBtnStyle}>
-            Sign out
-          </button>
-        </div>
-      </header>
-
-      {/* Main Page Content Container */}
-      <div style={{ maxWidth: '1280px', margin: '0 auto' }}>
-        <h1 style={{ fontSize: '2.25rem', fontWeight: 800, color: '#0f172a', marginBottom: '1.5rem', letterSpacing: '-0.02em' }}>
-          Student Manager
-        </h1>
+        <h1 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '1.5rem', color: '#000' }}>Student Manager</h1>
 
         {/* Charts Grid */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.25rem', marginBottom: '1.5rem' }}>
-          <ChartCard title="Major Distribution">
-            <DonutChart data={majorData} innerRadius={35} outerRadius={55} />
-            <ChartLegend items={majorData} />
-          </ChartCard>
-
-          <ChartCard title="University Distribution">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', margin: '0.75rem 0' }}>
-              {universityData.map((item, idx) => (
-                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', backgroundColor: '#f8fafc', padding: '0.4rem 0.65rem', borderRadius: '0.5rem', fontSize: '0.825rem' }}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: item.color }} />
-                    {item.name}
-                  </span>
-                  <strong>{item.value}%</strong>
-                </div>
-              ))}
+          <div style={chartCardStyle}>
+            <h3 style={chartTitleStyle}>Major Distribution</h3>
+            <div style={{ width: '140px', height: '140px', position: 'relative', marginBottom: '1rem' }}>
+              <canvas id="majorChart"></canvas>
             </div>
-          </ChartCard>
-
-          <ChartCard title="Gender Distribution">
-            <DonutChart data={genderData} innerRadius={35} outerRadius={55} centerLabel="100%" />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.75rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', fontWeight: 600 }}>
-                <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#8b5cf6' }} /> Male 100%
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: '#64748b' }}>
-                <span style={{ width: 8, height: 8, borderRadius: '50%', border: '1px solid #94a3b8' }} /> Female 0%
-              </div>
-            </div>
-          </ChartCard>
-
-          <ChartCard title="Decision Rate">
-            <DonutChart data={decisionData} innerRadius={35} outerRadius={55} />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', fontSize: '0.825rem' }}>
-              <LegendRow color="#06b6d4" label="Accepted" value="67%" />
-              <LegendRow color="#eab308" label="Waitlisted" value="17%" hasTooltip />
-              <LegendRow color="#8b5cf6" label="Pending" value="17%" />
-            </div>
-          </ChartCard>
-        </div>
-
-        {/* Filter Controls */}
-        <div style={{ backgroundColor: '#ffffff', padding: '0.75rem 1rem', borderRadius: '1rem', border: '1px solid #f1f5f9', display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '1.5rem', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
-          <div style={{ position: 'relative', flex: 1 }}>
-            <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-            <input
-              type="text"
-              placeholder="Search by name..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={filterInputStyle}
-            />
+            <ul style={legendListStyle}>
+              <li style={legendItemStyle}><span style={{ ...dotStyle, backgroundColor: '#8b5cf6' }}></span> Computer Science <strong>50%</strong></li>
+              <li style={legendItemStyle}><span style={{ ...dotStyle, backgroundColor: '#06b6d4' }}></span> Chemical Engineering <strong>17%</strong></li>
+              <li style={legendItemStyle}><span style={{ ...dotStyle, backgroundColor: '#10b981' }}></span> Bioscience <strong>33%</strong></li>
+            </ul>
           </div>
 
-          <select value={selectedMajor} onChange={(e) => setSelectedMajor(e.target.value)} style={selectStyle}>
-            <option value="">All Majors</option>
-            <option value="Bioscience">Bioscience</option>
-            <option value="Computer Science">Computer Science</option>
-          </select>
+          <div style={chartCardStyle}>
+            <h3 style={chartTitleStyle}>University Distribution</h3>
+            <div style={{ width: '140px', height: '140px', position: 'relative', marginBottom: '1rem' }}>
+              <canvas id="uniChart"></canvas>
+            </div>
+            <ul style={legendListStyle}>
+              <li style={legendItemStyle}><span style={{ ...dotStyle, backgroundColor: '#8b5cf6' }}></span> Nanjing University <strong>50%</strong></li>
+              <li style={legendItemStyle}><span style={{ ...dotStyle, backgroundColor: '#06b6d4' }}></span> Glasgow <strong>17%</strong></li>
+              <li style={legendItemStyle}><span style={{ ...dotStyle, backgroundColor: '#10b981' }}></span> NYU <strong>33%</strong></li>
+            </ul>
+          </div>
 
-          <select value={selectedUniversity} onChange={(e) => setSelectedUniversity(e.target.value)} style={selectStyle}>
-            <option value="">All Universities</option>
-            <option value="NYU">NYU</option>
-            <option value="Glasgow">Glasgow</option>
-          </select>
+          <div style={chartCardStyle}>
+            <h3 style={chartTitleStyle}>Gender Distribution</h3>
+            <div style={{ width: '140px', height: '140px', position: 'relative', marginBottom: '1rem' }}>
+              <canvas id="genderChart"></canvas>
+            </div>
+            <ul style={legendListStyle}>
+              <li style={legendItemStyle}><span style={{ ...dotStyle, backgroundColor: '#8b5cf6' }}></span> Male <strong>100%</strong></li>
+              <li style={{ ...legendItemStyle, border: '1px solid #cbd5e1', padding: '2px 8px', borderRadius: '12px', width: 'fit-content' }}>
+                <span style={{ ...dotStyle, border: '1px solid #94a3b8' }}></span> Female <strong>0%</strong>
+              </li>
+            </ul>
+          </div>
 
-          <select value={selectedGender} onChange={(e) => setSelectedGender(e.target.value)} style={selectStyle}>
-            <option value="">All Genders</option>
-            <option value="Male">Male</option>
-            <option value="Female">Female</option>
-          </select>
-
-          <select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value)} style={selectStyle}>
-            <option value="">All Statuses</option>
-            <option value="Accepted">Accepted</option>
-            <option value="Waitlisted">Waitlisted</option>
-          </select>
-
-          <button onClick={handleResetFilters} style={resetBtnStyle}>
-            Reset Filters
-          </button>
+          <div style={{ ...chartCardStyle, position: 'relative' }}>
+            <h3 style={chartTitleStyle}>Decision Rate</h3>
+            <div style={{ width: '140px', height: '140px', position: 'relative', marginBottom: '1rem' }}>
+              <canvas id="decisionChart"></canvas>
+            </div>
+            <ul style={legendListStyle}>
+              <li style={legendItemStyle}><span style={{ ...dotStyle, backgroundColor: '#06b6d4' }}></span> Accepted <strong>67%</strong></li>
+              <li style={legendItemStyle}><span style={{ ...dotStyle, backgroundColor: '#8b5cf6' }}></span> Waitlisted <strong>17%</strong> <Info size={14} color="#64748b" /></li>
+              <li style={legendItemStyle}><span style={{ ...dotStyle, backgroundColor: '#10b981' }}></span> Pending <strong>17%</strong></li>
+            </ul>
+          </div>
         </div>
 
-        {/* Student Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.25rem', marginBottom: '2rem' }}>
-          {studentsList.map((student) => (
-            <div key={student.id} style={studentCardStyle}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>{student.name}</h3>
-                  <p style={{ margin: '0.2rem 0 0 0', color: '#64748b', fontSize: '0.875rem' }}>{student.major}</p>
-                </div>
+        {/* Filter Card */}
+        <div style={{ backgroundColor: '#fff', borderRadius: '16px', padding: '1.25rem', marginBottom: '1.5rem', boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <div style={{ position: 'relative', flex: 1.5, minWidth: '200px' }}>
+              <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
+              <input
+                type="text"
+                placeholder="Search by name..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={{ width: '100%', padding: '0.6rem 0.6rem 0.6rem 2.4rem', border: '1px solid #e2e8f0', borderRadius: '10px', outline: 'none', background: '#fafafa' }}
+              />
+            </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.4rem' }}>
-                  <span style={badgeStyle(student.isPrivate)}>
-                    {student.isPrivate ? <Lock size={11} /> : <Globe size={11} />}
-                    {student.isPrivate ? 'Private' : 'Public'}
-                  </span>
-                  <button style={editButtonStyle}>
-                    <Edit2 size={11} /> Edit
-                  </button>
-                </div>
+            <select value={selectedMajor} onChange={(e) => setSelectedMajor(e.target.value)} style={selectStyle}>
+              <option value="">All Majors</option>
+              <option value="Bioscience">Bioscience</option>
+              <option value="Computer Science">Computer Science</option>
+              <option value="Chemical Engineering">Chemical Engineering</option>
+            </select>
+
+            <select value={selectedUni} onChange={(e) => setSelectedUni(e.target.value)} style={selectStyle}>
+              <option value="">All Universities</option>
+              <option value="Nanjing University">Nanjing University</option>
+              <option value="Glasgow">Glasgow</option>
+              <option value="NYU">NYU</option>
+            </select>
+
+            <select value={selectedGender} onChange={(e) => setSelectedGender(e.target.value)} style={selectStyle}>
+              <option value="">All Genders</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+            </select>
+
+            <select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value)} style={selectStyle}>
+              <option value="">All Statuses</option>
+              <option value="Private">Private</option>
+              <option value="Public">Public</option>
+            </select>
+
+            <button onClick={resetFilters} style={{ padding: '0.6rem 1.2rem', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', fontWeight: 600, cursor: 'pointer' }}>
+              Reset Filters
+            </button>
+          </div>
+        </div>
+
+        {/* Student Cards Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.25rem', marginBottom: '1.5rem' }}>
+          {filteredStudents.map((student) => (
+            <div key={student.id} style={{ background: 'linear-gradient(135deg, #f3e8ff 0%, #e0f2fe 100%)', borderRadius: '16px', padding: '1.25rem', position: 'relative', minHeight: '110px' }}>
+              <div style={{ position: 'absolute', top: '0.75rem', right: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.2rem 0.6rem', background: 'rgba(255,255,255,0.6)', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600, color: '#475569' }}>
+                  <Lock size={10} color={student.isPrivate ? '#475569' : '#eab308'} /> {student.isPrivate ? 'Private' : 'Public'}
+                </span>
+                <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#475569', display: 'flex', flexDirection: 'column', alignItems: 'center', fontSize: '0.65rem' }}>
+                  <Pencil size={14} /> Edit
+                </button>
+              </div>
+              <div style={{ marginTop: '0.5rem' }}>
+                <div style={{ fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>{student.name}</div>
+                <div style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '0.2rem' }}>{student.major}</div>
               </div>
             </div>
           ))}
         </div>
 
         {/* Pagination */}
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.75rem', color: '#64748b', fontSize: '0.875rem' }}>
-          <button style={paginationBtnStyle}>Previous</button>
-          <span style={{ backgroundColor: '#8b5cf6', color: '#fff', width: '28px', height: '28px', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
-            1
-          </span>
-          <button style={paginationBtnStyle}>Next</button>
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.75rem', fontWeight: 600, fontSize: '0.9rem', color: '#475569' }}>
+          <button style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, color: '#475569' }}>Previous</button>
+          <div style={{ width: '32px', height: '32px', background: '#8b5cf6', color: 'white', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>1</div>
+          <button style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, color: '#475569' }}>Next</button>
         </div>
+
       </div>
     </div>
   )
 }
 
-function ChartCard({ title, children }) {
-  return (
-    <div style={{ backgroundColor: '#ffffff', borderRadius: '1.25rem', padding: '1.25rem', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.03)', border: '1px solid #f1f5f9' }}>
-      <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '0.95rem', fontWeight: 700, textAlign: 'center', color: '#0f172a' }}>{title}</h3>
-      {children}
-    </div>
-  )
-}
+// ── Helper Styles ─────────────────────────────────────────────────────────────
 
-function DonutChart({ data, innerRadius, outerRadius, centerLabel }) {
-  return (
-    <div style={{ width: '100%', height: 120, position: 'relative' }}>
-      <ResponsiveContainer width="100%" height="100%">
-        <PieChart>
-          <Pie data={data} cx="50%" cy="50%" innerRadius={innerRadius} outerRadius={outerRadius} dataKey="value" stroke="none">
-            {data.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={entry.color} />
-            ))}
-          </Pie>
-        </PieChart>
-      </ResponsiveContainer>
-      {centerLabel && (
-        <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', fontWeight: 700, fontSize: '0.8rem', color: '#0f172a' }}>
-          {centerLabel}
-        </div>
-      )}
-    </div>
-  )
-}
-
-function ChartLegend({ items }) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginTop: '0.5rem' }}>
-      {items.map((item, idx) => (
-        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
-          <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#475569' }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: item.color }} />
-            {item.name}
-          </span>
-          <strong>{item.value}%</strong>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function LegendRow({ color, label, value, hasTooltip }) {
-  return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-      <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#475569' }}>
-        <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: color }} />
-        {label}
-      </span>
-      <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontWeight: 600 }}>
-        {value}
-        {hasTooltip && <Info size={12} style={{ color: '#64748b', cursor: 'pointer' }} />}
-      </span>
-    </div>
-  )
-}
-
-const navTabStyle = (isActive) => ({
+const navBtnStyle = (isActive) => ({
   display: 'inline-flex',
   alignItems: 'center',
-  gap: '0.4rem',
-  padding: '0.45rem 1rem',
-  borderRadius: '0.6rem',
-  backgroundColor: isActive ? '#e2e8f0' : '#ffffff',
-  color: isActive ? '#0f172a' : '#64748b',
-  fontWeight: isActive ? 700 : 500,
+  gap: '0.5rem',
+  padding: '0.6rem 1.2rem',
+  background: isActive ? '#e2e8f0' : '#ffffff',
+  border: '1px solid #e2e8f0',
+  borderRadius: '10px',
+  fontWeight: 500,
+  fontSize: '0.9rem',
+  color: '#334155',
   textDecoration: 'none',
-  fontSize: '0.875rem',
-  boxShadow: isActive ? 'none' : '0 1px 3px rgba(0,0,0,0.05)'
+  cursor: 'pointer'
 })
 
-const actionBtnStyle = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: '0.4rem',
-  padding: '0.45rem 1rem',
-  borderRadius: '0.6rem',
-  border: '1px solid #e2e8f0',
-  backgroundColor: '#ffffff',
-  color: '#0f172a',
-  fontWeight: 600,
-  fontSize: '0.85rem',
-  cursor: 'pointer'
+const chartCardStyle = {
+  background: '#ffffff',
+  borderRadius: '16px',
+  padding: '1.25rem',
+  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.03)',
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center'
 }
 
-const filterInputStyle = {
-  width: '100%',
-  padding: '0.5rem 0.75rem 0.5rem 2.25rem',
-  borderRadius: '0.6rem',
-  border: '1px solid #e2e8f0',
-  backgroundColor: '#f8fafc',
-  fontSize: '0.85rem',
-  outline: 'none'
-}
-
-const selectStyle = {
-  padding: '0.5rem 0.75rem',
-  borderRadius: '0.6rem',
-  border: '1px solid #e2e8f0',
-  backgroundColor: '#ffffff',
-  fontSize: '0.85rem',
-  outline: 'none',
-  color: '#334155'
-}
-
-const resetBtnStyle = {
-  padding: '0.5rem 1rem',
-  borderRadius: '0.6rem',
-  border: '1px solid #e2e8f0',
-  backgroundColor: '#ffffff',
-  fontWeight: 600,
-  fontSize: '0.85rem',
-  cursor: 'pointer',
+const chartTitleStyle = {
+  fontSize: '1.05rem',
+  fontWeight: 700,
+  marginBottom: '1rem',
+  textAlign: 'center',
   color: '#0f172a'
 }
 
-const studentCardStyle = {
-  backgroundColor: '#f5f3ff',
-  borderRadius: '1.25rem',
-  padding: '1.25rem',
-  border: '1px solid #ede9fe'
+const legendListStyle = {
+  width: '100%',
+  listStyle: 'none',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '0.6rem',
+  fontSize: '0.85rem',
+  padding: 0
 }
 
-const badgeStyle = (isPrivate) => ({
-  display: 'inline-flex',
+const legendItemStyle = {
+  display: 'flex',
   alignItems: 'center',
-  gap: '0.25rem',
-  padding: '0.15rem 0.5rem',
-  borderRadius: '999px',
-  backgroundColor: isPrivate ? '#fef3c7' : '#dcfce7',
-  color: isPrivate ? '#92400e' : '#166534',
-  fontSize: '0.75rem',
-  fontWeight: 600
-})
-
-const editButtonStyle = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: '0.25rem',
-  border: 'none',
-  background: 'none',
-  cursor: 'pointer',
-  fontSize: '0.75rem',
-  color: '#64748b'
-}
-
-const paginationBtnStyle = {
-  border: 'none',
-  background: 'none',
-  cursor: 'pointer',
-  color: '#64748b',
+  justifyLink: 'space-between',
+  gap: '0.5rem',
   fontWeight: 500
+}
+
+const dotStyle = {
+  width: '10px',
+  height: '10px',
+  borderRadius: '50%',
+  display: 'inline-block',
+  flexShrink: 0
+}
+
+const selectStyle = {
+  flex: 1,
+  minWidth: '130px',
+  padding: '0.6rem 1rem',
+  border: '1px solid #e2e8f0',
+  borderRadius: '10px',
+  background: '#fafafa',
+  fontSize: '0.875rem',
+  outline: 'none',
+  cursor: 'pointer'
 }
