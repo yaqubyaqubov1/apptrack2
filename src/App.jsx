@@ -26,10 +26,10 @@
  * ============================================================================
  */
 
-import { Navigate, Route, Routes } from 'react-router-dom'
-import { useAuth } from './context/AuthContext'
-import PublicRoute from './components/PublicRoute'
+import React from 'react'
+import { Routes, Route, Navigate, Link } from 'react-router-dom'
 import ProtectedRoute from './components/ProtectedRoute'
+import PublicRoute from './components/PublicRoute'
 import RoleRoute from './components/RoleRoute'
 
 import HomePage from './pages/HomePage'
@@ -39,21 +39,17 @@ import CompleteProfilePage from './pages/CompleteProfilePage'
 import StudentDashboard from './pages/StudentDashboard'
 import AdminDashboard from './pages/AdminDashboard'
 
+import { useAuth } from './context/AuthContext'
+
 /**
- * RootRedirect
- * ------------
- * Smart entry point for the "/" route.
- * Redirects the user to the appropriate page based on their auth state
- * and profile status. Shown while the auth context is still loading.
+ * RootRedirect Component
+ * Directs users depending on authentication and profile completion status.
  */
 function RootRedirect() {
   const { user, profile, loading } = useAuth()
 
-  // While auth state is being resolved, render nothing (prevents flicker)
-  if (loading) return null
-
-  // Guest → show the public landing page
-  if (!user) return <HomePage />
+  if (loading) return <div>Loading...</div>
+  if (!user) return <Navigate to="/login" replace />
 
   // Logged in but profile not yet completed → force complete-profile flow
   if (!profile?.is_profile_completed) {
@@ -66,67 +62,106 @@ function RootRedirect() {
 }
 
 /**
+ * Navigation Bar Component
+ * Shows navigation links based on user role.
+ */
+function NavigationBar() {
+  const { user, profile, signOut } = useAuth()
+
+  if (!user) return null
+
+  return (
+    <header className="header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 2rem', background: '#fff', borderBottom: '1px solid #eee' }}>
+      <div className="header-left" style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
+        <h1 style={{ margin: 0, fontSize: '1.25rem' }}>Student Manager</h1>
+        
+        {/* Navigation Links */}
+        <nav className="nav-links" style={{ display: 'flex', gap: '1.5rem' }}>
+          <Link to="/home-page" className="nav-item">Home</Link>
+          <Link to="/complete-profile" className="nav-item">Profile</Link>
+          
+          {/* Admin Panel button visible ONLY to users with 'admin' role */}
+          {profile?.role === 'admin' && (
+            <Link to="/admin" className="nav-item" style={{ fontWeight: 'bold', color: '#2563eb' }}>
+              Admin Panel
+            </Link>
+          )}
+        </nav>
+      </div>
+
+      <div className="header-right" style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+        <button className="notifications-btn">🔔 Notifications</button>
+        <button className="signout-btn" onClick={signOut}>Sign out</button>
+      </div>
+    </header>
+  )
+}
+
+/**
  * App
  * ---
  * The top-level component that defines all application routes.
  */
 function App() {
   return (
-    <Routes>
-      {/* Landing / smart redirect */}
-      <Route path="/" element={<RootRedirect />} />
-      <Route path="/home-page" element={<HomePage />} />
+    <>
+      <NavigationBar />
+      <Routes>
+        {/* Landing / smart redirect */}
+        <Route path="/" element={<RootRedirect />} />
+        <Route path="/home-page" element={<HomePage />} />
 
-      {/* ── Public routes (guests only) ─────────────────────────── */}
-      <Route
-        path="/login"
-        element={
-          <PublicRoute>
-            <LoginPage />
-          </PublicRoute>
-        }
-      />
-      <Route
-        path="/register"
-        element={
-          <PublicRoute>
-            <RegisterPage />
-          </PublicRoute>
-        }
-      />
+        {/* ── Public routes (guests only) ─────────────────────────── */}
+        <Route
+          path="/login"
+          element={
+            <PublicRoute>
+              <LoginPage />
+            </PublicRoute>
+          }
+        />
+        <Route
+          path="/register"
+          element={
+            <PublicRoute>
+              <RegisterPage />
+            </PublicRoute>
+          }
+        />
 
-      {/* ── Protected route (any authenticated user) ────────────── */}
-      <Route
-        path="/complete-profile"
-        element={
-          <ProtectedRoute>
-            <CompleteProfilePage />
-          </ProtectedRoute>
-        }
-      />
+        {/* ── Protected route (any authenticated user) ────────────── */}
+        <Route
+          path="/complete-profile"
+          element={
+            <ProtectedRoute>
+              <CompleteProfilePage />
+            </ProtectedRoute>
+          }
+        />
 
-      {/* ── Role-based routes ───────────────────────────────────── */}
-      <Route
-        path="/student"
-        element={
-          <ProtectedRoute>
-            <RoleRoute allowedRole="student">
-              <StudentDashboard />
-            </RoleRoute>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/admin"
-        element={
-          <ProtectedRoute>
-            <RoleRoute allowedRole="admin">
-              <AdminDashboard />
-            </RoleRoute>
-          </ProtectedRoute>
-        }
-      />
-    </Routes>
+        {/* ── Role-based routes ───────────────────────────────────── */}
+        <Route
+          path="/student"
+          element={
+            <ProtectedRoute>
+              <RoleRoute allowedRole="student">
+                <StudentDashboard />
+              </RoleRoute>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute>
+              <RoleRoute allowedRole="admin">
+                <AdminDashboard />
+              </RoleRoute>
+            </ProtectedRoute>
+          }
+        />
+      </Routes>
+    </>
   )
 }
 
