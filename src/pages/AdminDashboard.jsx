@@ -18,46 +18,71 @@ export default function AdminDashboard() {
   const [selectedGender, setSelectedGender] = useState('')
   const [selectedStatus, setSelectedStatus] = useState('')
 
+  // University Autocomplete State
+  const [uniQuery, setUniQuery] = useState('')
+  const [uniSuggestions, setUniSuggestions] = useState([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
+
+  // University Autocomplete Fetching (Hipolabs API)
   useEffect(() => {
-    // Dynamically load Chart.js CDN script if not already present
-    const loadChartJs = () => {
-      if (window.Chart) {
-        initCharts()
-        return
-      }
-      const script = document.createElement('script')
-      script.src = 'https://cdn.jsdelivr.net/npm/chart.js'
-      script.async = true
-      script.onload = () => initCharts()
-      document.body.appendChild(script)
+    if (uniQuery.trim().length < 2) {
+      setUniSuggestions([])
+      setShowSuggestions(false)
+      return
     }
 
-    let majorChart, uniChart, genderChart, decisionChart
-
-    const initCharts = () => {
-      const Chart = window.Chart
-      if (!Chart) return
-
-      const centerTextPlugin = {
-        id: 'centerText',
-        beforeDraw(chart) {
-          const { width, height, ctx } = chart
-          ctx.restore()
-          const fontSize = (height / 114).toFixed(2)
-          ctx.font = `bold ${fontSize}em sans-serif`
-          ctx.textBaseline = 'middle'
-          ctx.fillStyle = '#0f172a'
-
-          const text = chart.config.options.plugins.centerText?.text || ''
-          const textX = Math.round((width - ctx.measureText(text).width) / 2)
-          const textY = height / 2
-
-          ctx.fillText(text, textX, textY)
-          ctx.save()
-        }
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`https://universities.hipolabs.com/search?name=${encodeURIComponent(uniQuery)}`)
+        const data = await res.json()
+        setUniSuggestions(data.slice(0, 8))
+        setShowSuggestions(true)
+      } catch (err) {
+        console.error('Failed to fetch universities:', err)
       }
+    }, 300)
 
-      Chart.register(centerTextPlugin)
+    return () => clearTimeout(timer)
+  }, [uniQuery])
+
+  // Load Chart.js CDN and render charts
+  useEffect(() => {
+    const loadChartJs = () => {
+      return new Promise((resolve) => {
+        if (window.Chart) {
+          resolve(window.Chart)
+          return
+        }
+        const script = document.createElement('script')
+        script.src = 'https://cdn.jsdelivr.net/npm/chart.js'
+        script.onload = () => resolve(window.Chart)
+        document.head.appendChild(script)
+      })
+    }
+
+    loadChartJs().then((Chart) => {
+      // Register custom center text plugin if not registered
+      const pluginId = 'centerText'
+      if (!Chart.registry.plugins.get(pluginId)) {
+        Chart.register({
+          id: pluginId,
+          beforeDraw(chart) {
+            const { width, height, ctx } = chart
+            ctx.restore()
+            const fontSize = (height / 114).toFixed(2)
+            ctx.font = `bold ${fontSize}em sans-serif`
+            ctx.textBaseline = 'middle'
+            ctx.fillStyle = '#0f172a'
+
+            const text = chart.config.options.plugins.centerText?.text || ''
+            const textX = Math.round((width - ctx.measureText(text).width) / 2)
+            const textY = height / 2
+
+            ctx.fillText(text, textX, textY)
+            ctx.save()
+          }
+        })
+      }
 
       const commonOptions = {
         cutout: '65%',
@@ -69,9 +94,11 @@ export default function AdminDashboard() {
         }
       }
 
+      // 1. Major Distribution
       const majorCtx = document.getElementById('majorChart')
+      let majorChartInstance
       if (majorCtx) {
-        majorChart = new Chart(majorCtx, {
+        majorChartInstance = new Chart(majorCtx, {
           type: 'doughnut',
           data: {
             labels: ['Computer Science', 'Chemical Engineering', 'Bioscience'],
@@ -88,9 +115,11 @@ export default function AdminDashboard() {
         })
       }
 
+      // 2. University Distribution
       const uniCtx = document.getElementById('uniChart')
+      let uniChartInstance
       if (uniCtx) {
-        uniChart = new Chart(uniCtx, {
+        uniChartInstance = new Chart(uniCtx, {
           type: 'doughnut',
           data: {
             labels: ['Nanjing University', 'Glasgow', 'NYU'],
@@ -100,13 +129,18 @@ export default function AdminDashboard() {
               borderWidth: 0
             }]
           },
-          options: commonOptions
+          options: {
+            ...commonOptions,
+            plugins: { ...commonOptions.plugins, centerText: { text: '' } }
+          }
         })
       }
 
+      // 3. Gender Distribution
       const genderCtx = document.getElementById('genderChart')
+      let genderChartInstance
       if (genderCtx) {
-        genderChart = new Chart(genderCtx, {
+        genderChartInstance = new Chart(genderCtx, {
           type: 'doughnut',
           data: {
             labels: ['Male', 'Female'],
@@ -123,9 +157,11 @@ export default function AdminDashboard() {
         })
       }
 
+      // 4. Decision Rate
       const decisionCtx = document.getElementById('decisionChart')
+      let decisionChartInstance
       if (decisionCtx) {
-        decisionChart = new Chart(decisionCtx, {
+        decisionChartInstance = new Chart(decisionCtx, {
           type: 'doughnut',
           data: {
             labels: ['Accepted', 'Waitlisted', 'Pending'],
@@ -141,17 +177,19 @@ export default function AdminDashboard() {
           }
         })
       }
-    }
 
-    loadChartJs()
-
-    return () => {
-      if (majorChart) majorChart.destroy()
-      if (uniChart) uniChart.destroy()
-      if (genderChart) genderChart.destroy()
-      if (decisionChart) decisionChart.destroy()
-    }
+      return () => {
+        if (majorChartInstance) majorChartInstance.destroy()
+        if (uniChartInstance) uniChartInstance.destroy()
+        if (genderChartInstance) genderChartInstance.destroy()
+        if (decisionChartInstance) decisionChartInstance.destroy()
+      }
+    })
   }, [])
+
+  const handleSignOut = () => {
+    alert('Signed out successfully')
+  }
 
   const resetFilters = () => {
     setSearchTerm('')
@@ -159,48 +197,55 @@ export default function AdminDashboard() {
     setSelectedUni('')
     setSelectedGender('')
     setSelectedStatus('')
+    setUniQuery('')
+    setShowSuggestions(false)
   }
 
   const students = [
-    { id: 1, name: 'Aykhan Khudaverdiyev', major: 'Bioscience', isPrivate: true },
-    { id: 2, name: 'Narana Mansoh', major: 'Bioscience', isPrivate: true },
-    { id: 3, name: 'Suhasen Derau', major: 'Bioscience', isPrivate: false },
-    { id: 4, name: 'Aykhan Khudaverdiyev', major: 'Bioscience', isPrivate: true },
-    { id: 5, name: 'Ronaldd Mansoh', major: 'Bioscience', isPrivate: true },
-    { id: 6, name: 'Suhasen Derau', major: 'Bioscience', isPrivate: false }
+    { id: 1, name: 'Aykhan Khudaverdiyev', major: 'Bioscience', status: 'Private' },
+    { id: 2, name: 'Narana Mansoh', major: 'Bioscience', status: 'Private' },
+    { id: 3, name: 'Suhasen Derau', major: 'Bioscience', status: 'Public' },
+    { id: 4, name: 'Aykhan Khudaverdiyev', major: 'Bioscience', status: 'Private' },
+    { id: 5, name: 'Ronaldd Mansoh', major: 'Bioscience', status: 'Private' },
+    { id: 6, name: 'Suhasen Derau', major: 'Bioscience', status: 'Public' }
   ]
 
-  const filteredStudents = students.filter(student =>
-    student.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
-    (selectedMajor === '' || student.major === selectedMajor) &&
-    (selectedStatus === '' || (selectedStatus === 'Private' ? student.isPrivate : !student.isPrivate))
-  )
+  const filteredStudents = students.filter(student => {
+    const matchesName = student.name.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesMajor = selectedMajor ? student.major === selectedMajor : true
+    const matchesStatus = selectedStatus ? student.status === selectedStatus : true
+    return matchesName && matchesMajor && matchesStatus
+  })
 
   return (
-    <div style={{ backgroundColor: '#f3f4f8', minHeight: '100vh', padding: '2rem', fontFamily: 'system-ui, sans-serif' }}>
+    <div style={{ backgroundColor: '#f3f4f8', minHeight: '100vh', padding: '2rem', color: '#0f172a' }}>
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
         
-        {/* Top Header Navigation */}
+        {/* Top Header */}
         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
           <div style={{ display: 'flex', gap: '0.75rem' }}>
-            <Link to="/home-page" style={navBtnStyle(false)}><Home size={16} /> Home</Link>
-            <Link to="/student" style={navBtnStyle(false)}><User size={16} /> Profile</Link>
-            <Link to="/admin" style={navBtnStyle(true)}><Shield size={16} /> Admin Panel</Link>
+            <Link to="/" style={btnStyle}><Home size={18} /> Home</Link>
+            <Link to="/profile" style={btnStyle}><User size={18} /> Profile</Link>
+            <Link to="/admin" style={{ ...btnStyle, backgroundColor: '#e2e8f0' }}><Shield size={18} /> Admin Panel</Link>
           </div>
           <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-            <button style={navBtnStyle(false)}>
-              <Bell size={16} /> Notifications
-              <span style={{ backgroundColor: '#ef4444', color: '#fff', borderRadius: '9999px', padding: '0.1rem 0.5rem', fontSize: '0.75rem', fontWeight: 'bold' }}>3</span>
+            <button style={btnStyle}>
+              <Bell size={18} /> Notifications 
+              <span style={{ background: '#ef4444', color: '#fff', borderRadius: '9999px', padding: '0.1rem 0.5rem', fontSize: '0.75rem', fontWeight: 700, marginLeft: '0.25rem' }}>3</span>
             </button>
-            <button style={{ ...navBtnStyle(false), fontWeight: 600, color: '#0f172a' }}>Sign out</button>
+            <button onClick={handleSignOut} style={{ ...btnStyle, fontWeight: 600 }}>
+              Sign out
+            </button>
           </div>
         </header>
 
-        <h1 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '1.5rem', color: '#000' }}>Student Manager</h1>
+        <h1 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '1.5rem' }}>Student Manager</h1>
 
-        {/* Charts Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.25rem', marginBottom: '1.5rem' }}>
-          <div style={chartCardStyle}>
+        {/* Donut Charts Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem', marginBottom: '1.5rem' }}>
+          
+          {/* Major Distribution */}
+          <div style={cardStyle}>
             <h3 style={chartTitleStyle}>Major Distribution</h3>
             <div style={{ width: '140px', height: '140px', position: 'relative', marginBottom: '1rem' }}>
               <canvas id="majorChart"></canvas>
@@ -212,7 +257,8 @@ export default function AdminDashboard() {
             </ul>
           </div>
 
-          <div style={chartCardStyle}>
+          {/* University Distribution */}
+          <div style={cardStyle}>
             <h3 style={chartTitleStyle}>University Distribution</h3>
             <div style={{ width: '140px', height: '140px', position: 'relative', marginBottom: '1rem' }}>
               <canvas id="uniChart"></canvas>
@@ -224,7 +270,8 @@ export default function AdminDashboard() {
             </ul>
           </div>
 
-          <div style={chartCardStyle}>
+          {/* Gender Distribution */}
+          <div style={cardStyle}>
             <h3 style={chartTitleStyle}>Gender Distribution</h3>
             <div style={{ width: '140px', height: '140px', position: 'relative', marginBottom: '1rem' }}>
               <canvas id="genderChart"></canvas>
@@ -237,33 +284,41 @@ export default function AdminDashboard() {
             </ul>
           </div>
 
-          <div style={{ ...chartCardStyle, position: 'relative' }}>
+          {/* Decision Rate */}
+          <div style={{ ...cardStyle, position: 'relative' }}>
             <h3 style={chartTitleStyle}>Decision Rate</h3>
             <div style={{ width: '140px', height: '140px', position: 'relative', marginBottom: '1rem' }}>
               <canvas id="decisionChart"></canvas>
             </div>
             <ul style={legendListStyle}>
               <li style={legendItemStyle}><span style={{ ...dotStyle, backgroundColor: '#06b6d4' }}></span> Accepted <strong>67%</strong></li>
-              <li style={legendItemStyle}><span style={{ ...dotStyle, backgroundColor: '#8b5cf6' }}></span> Waitlisted <strong>17%</strong> <Info size={14} color="#64748b" /></li>
+              <li style={legendItemStyle}><span style={{ ...dotStyle, backgroundColor: '#eab308' }}></span> Waitlisted <strong>17%</strong> <Info size={14} color="#64748b" /></li>
               <li style={legendItemStyle}><span style={{ ...dotStyle, backgroundColor: '#10b981' }}></span> Pending <strong>17%</strong></li>
             </ul>
+            <div style={tooltipStyle}>
+              Applications with no current decision
+            </div>
           </div>
+
         </div>
 
-        {/* Filter Card */}
-        <div style={{ backgroundColor: '#fff', borderRadius: '16px', padding: '1.25rem', marginBottom: '1.5rem', boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
-          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-            <div style={{ position: 'relative', flex: 1.5, minWidth: '200px' }}>
+        {/* Filters Bar with Autocomplete */}
+        <div style={{ ...cardStyle, marginBottom: '1.5rem', overflow: 'visible' }}>
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            
+            {/* Search Input */}
+            <div style={{ position: 'relative', flex: '1.5', minWidth: '200px' }}>
               <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
-              <input
-                type="text"
-                placeholder="Search by name..."
+              <input 
+                type="text" 
+                placeholder="Search by name..." 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                style={{ width: '100%', padding: '0.6rem 0.6rem 0.6rem 2.4rem', border: '1px solid #e2e8f0', borderRadius: '10px', outline: 'none', background: '#fafafa' }}
+                style={inputStyle}
               />
             </div>
 
+            {/* Major Dropdown */}
             <select value={selectedMajor} onChange={(e) => setSelectedMajor(e.target.value)} style={selectStyle}>
               <option value="">All Majors</option>
               <option value="Bioscience">Bioscience</option>
@@ -271,41 +326,63 @@ export default function AdminDashboard() {
               <option value="Chemical Engineering">Chemical Engineering</option>
             </select>
 
-            <select value={selectedUni} onChange={(e) => setSelectedUni(e.target.value)} style={selectStyle}>
-              <option value="">All Universities</option>
-              <option value="Nanjing University">Nanjing University</option>
-              <option value="Glasgow">Glasgow</option>
-              <option value="NYU">NYU</option>
-            </select>
+            {/* University Autocomplete Search */}
+            <div style={{ position: 'relative', flex: '1', minWidth: '180px' }}>
+              <input 
+                type="text" 
+                placeholder="Search University..."
+                value={uniQuery}
+                onChange={(e) => setUniQuery(e.target.value)}
+                onFocus={() => uniSuggestions.length > 0 && setShowSuggestions(true)}
+                style={{ ...inputStyle, paddingLeft: '0.75rem' }}
+              />
+              {showSuggestions && (
+                <ul style={suggestionsListStyle}>
+                  {uniSuggestions.map((item, idx) => (
+                    <li 
+                      key={idx} 
+                      onClick={() => {
+                        setUniQuery(item.name)
+                        setSelectedUni(item.name)
+                        setShowSuggestions(false)
+                      }}
+                      style={suggestionItemStyle}
+                    >
+                      {item.name} ({item.country})
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
 
+            {/* Gender Select */}
             <select value={selectedGender} onChange={(e) => setSelectedGender(e.target.value)} style={selectStyle}>
               <option value="">All Genders</option>
               <option value="Male">Male</option>
               <option value="Female">Female</option>
             </select>
 
+            {/* Status Select */}
             <select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value)} style={selectStyle}>
               <option value="">All Statuses</option>
               <option value="Private">Private</option>
               <option value="Public">Public</option>
             </select>
 
-            <button onClick={resetFilters} style={{ padding: '0.6rem 1.2rem', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', fontWeight: 600, cursor: 'pointer' }}>
-              Reset Filters
-            </button>
+            <button onClick={resetFilters} style={btnStyle}>Reset Filters</button>
           </div>
         </div>
 
         {/* Student Cards Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.25rem', marginBottom: '1.5rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.25rem', marginBottom: '1.5rem' }}>
           {filteredStudents.map((student) => (
-            <div key={student.id} style={{ background: 'linear-gradient(135deg, #f3e8ff 0%, #e0f2fe 100%)', borderRadius: '16px', padding: '1.25rem', position: 'relative', minHeight: '110px' }}>
-              <div style={{ position: 'absolute', top: '0.75rem', right: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.2rem 0.6rem', background: 'rgba(255,255,255,0.6)', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600, color: '#475569' }}>
-                  <Lock size={10} color={student.isPrivate ? '#475569' : '#eab308'} /> {student.isPrivate ? 'Private' : 'Public'}
+            <div key={student.id} style={studentCardStyle}>
+              <div style={{ position: 'absolute', top: '0.75rem', right: '0.75rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.2rem 0.6rem', background: 'rgba(255, 255, 255, 0.7)', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600, color: '#475569' }}>
+                  <Lock size={10} color={student.status === 'Public' ? '#eab308' : '#475569'} /> {student.status}
                 </span>
-                <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#475569', display: 'flex', flexDirection: 'column', alignItems: 'center', fontSize: '0.65rem' }}>
-                  <Pencil size={14} /> Edit
+                <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#475569', fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                  <Pencil size={12} /> Edit
                 </button>
               </div>
               <div style={{ marginTop: '0.5rem' }}>
@@ -318,9 +395,9 @@ export default function AdminDashboard() {
 
         {/* Pagination */}
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.75rem', fontWeight: 600, fontSize: '0.9rem', color: '#475569' }}>
-          <button style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, color: '#475569' }}>Previous</button>
-          <div style={{ width: '32px', height: '32px', background: '#8b5cf6', color: 'white', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>1</div>
-          <button style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, color: '#475569' }}>Next</button>
+          <button style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>Previous</button>
+          <div style={{ width: '32px', height: '32px', background: '#8b5cf6', color: '#fff', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>1</div>
+          <button style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>Next</button>
         </div>
 
       </div>
@@ -328,23 +405,24 @@ export default function AdminDashboard() {
   )
 }
 
-const navBtnStyle = (isActive) => ({
+// Inline Style Objects
+const btnStyle = {
   display: 'inline-flex',
   alignItems: 'center',
   gap: '0.5rem',
   padding: '0.6rem 1.2rem',
-  background: isActive ? '#e2e8f0' : '#ffffff',
+  backgroundColor: '#ffffff',
   border: '1px solid #e2e8f0',
   borderRadius: '10px',
   fontWeight: 500,
   fontSize: '0.9rem',
   color: '#334155',
-  textDecoration: 'none',
-  cursor: 'pointer'
-})
+  cursor: 'pointer',
+  textDecoration: 'none'
+}
 
-const chartCardStyle = {
-  background: '#ffffff',
+const cardStyle = {
+  backgroundColor: '#ffffff',
   borderRadius: '16px',
   padding: '1.25rem',
   boxShadow: '0 4px 20px rgba(0, 0, 0, 0.03)',
@@ -357,7 +435,6 @@ const chartTitleStyle = {
   fontSize: '1.05rem',
   fontWeight: 700,
   marginBottom: '1rem',
-  textAlign: 'center',
   color: '#0f172a'
 }
 
@@ -367,14 +444,12 @@ const legendListStyle = {
   display: 'flex',
   flexDirection: 'column',
   gap: '0.6rem',
-  fontSize: '0.85rem',
-  padding: 0
+  fontSize: '0.85rem'
 }
 
 const legendItemStyle = {
   display: 'flex',
   alignItems: 'center',
-  justifyContent: 'space-between',
   gap: '0.5rem',
   fontWeight: 500
 }
@@ -387,14 +462,73 @@ const dotStyle = {
   flexShrink: 0
 }
 
+const tooltipStyle = {
+  position: 'absolute',
+  bottom: '-15px',
+  right: '-20px',
+  backgroundColor: '#1e293b',
+  color: '#ffffff',
+  padding: '0.6rem 0.8rem',
+  borderRadius: '6px',
+  fontSize: '0.75rem',
+  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+  zIndex: 10,
+  width: '150px'
+}
+
+const inputStyle = {
+  width: '100%',
+  padding: '0.6rem 0.6rem 0.6rem 2.4rem',
+  border: '1px solid #e2e8f0',
+  borderRadius: '10px',
+  outline: 'none',
+  fontSize: '0.9rem',
+  backgroundColor: '#fafafa'
+}
+
 const selectStyle = {
-  flex: 1,
+  flex: '1',
   minWidth: '130px',
   padding: '0.6rem 1rem',
   border: '1px solid #e2e8f0',
   borderRadius: '10px',
-  background: '#fafafa',
+  backgroundColor: '#fafafa',
   fontSize: '0.875rem',
   outline: 'none',
   cursor: 'pointer'
+}
+
+const suggestionsListStyle = {
+  position: 'absolute',
+  top: '100%',
+  left: 0,
+  right: 0,
+  background: '#ffffff',
+  border: '1px solid #cbd5e1',
+  borderRadius: '8px',
+  marginTop: '4px',
+  maxHeight: '200px',
+  overflowY: 'auto',
+  boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+  listStyle: 'none',
+  zIndex: 50,
+  padding: 0
+}
+
+const suggestionItemStyle = {
+  padding: '0.6rem 0.8rem',
+  cursor: 'pointer',
+  fontSize: '0.85rem',
+  borderBottom: '1px solid #f1f5f9'
+}
+
+const studentCardStyle = {
+  background: 'linear-gradient(135deg, #f3e8ff 0%, #e0f2fe 100%)',
+  borderRadius: '16px',
+  padding: '1.25rem',
+  position: 'relative',
+  minHeight: '110px',
+  display: 'flex',
+  flexDirection: 'column',
+  justify-content: 'space-between'
 }
