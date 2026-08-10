@@ -47,7 +47,6 @@ function savePersisted(key, value) {
 }
 
 const PIE_COLORS = ['#7c3aed', '#06b6d4', '#22c55e', '#f97316', '#ef4444', '#8b5cf6', '#14b8a6']
-const STUDENT_PROFILE_URL = 'https://apptrack2.vercel.app/student'
 
 // Document categories shown inside every application
 const DOC_CATEGORIES = [
@@ -242,20 +241,9 @@ function StudentCard({ student, onOpen }) {
     (student.licenses || []).filter((l) => l.visibility === 'public').length
 
   const profilePublic = student.visibility?.profile === 'public'
-  const acceptedApplications = (student.applications || []).filter((a) => a.decision === 'Accepted').length
-
-  function openStudentProfile(event) {
-    event.stopPropagation()
-    window.location.assign(STUDENT_PROFILE_URL)
-  }
-
-  function manageStudent(event) {
-    event.stopPropagation()
-    onOpen(student)
-  }
 
   return (
-    <article className="student-card">
+    <button className="student-card" onClick={() => onOpen(student)}>
       <div className="student-card__media">
         <Avatar
           name={student.fullName}
@@ -282,20 +270,18 @@ function StudentCard({ student, onOpen }) {
         <p className="student-card__university">{student.university || 'University not set'}</p>
         <div className="student-card__metrics">
           <div><span>Apps</span><strong>{student.applications?.length || 0}</strong></div>
-          <div><span>Accepted</span><strong className="student-card__accepted">{acceptedApplications}</strong></div>
+          <div><span>Accepted</span><strong className="student-card__accepted">{(student.applications || []).filter((a) => a.decision === 'Accepted').length}</strong></div>
           <div><span>Profile</span><strong>{student.isProfileCompleted ? '100%' : 'Needs work'}</strong></div>
         </div>
         <div className="student-card__footer">
           <span className="student-card__mentor">Mentor: {student.assignedCounselor || 'Unassigned'}</span>
-          <div className="student-card__actions">
-            <button type="button" className="student-card__manage" onClick={manageStudent}>Manage</button>
-            <button type="button" className="student-card__view" onClick={openStudentProfile}>View Profile <span>→</span></button>
-          </div>
+          <span className="student-card__view">View Profile <span>→</span></span>
         </div>
       </div>
-    </article>
+    </button>
   )
 }
+
 function Pagination({ currentPage, totalPages, setCurrentPage }) {
   const pages = useMemo(() => {
     if (totalPages <= 7) {
