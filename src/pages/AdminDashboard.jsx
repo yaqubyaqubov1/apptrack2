@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './AdminDashboard.css'
 import Avatar from '../components/Avatar'
@@ -260,23 +260,8 @@ function StudentCard({ student, onOpen }) {
       </div>
 
       <div className="student-card__body">
-        <div className="student-card__identity">
-          <div>
-            <h4>{student.fullName}</h4>
-            <span className="student-card__id">{student.id ? String(student.id).slice(0, 8).toUpperCase() : 'STUDENT'}</span>
-          </div>
-        </div>
-        <p className="student-card__major">{student.major || 'Major not set'}</p>
-        <p className="student-card__university">{student.university || 'University not set'}</p>
-        <div className="student-card__metrics">
-          <div><span>Apps</span><strong>{student.applications?.length || 0}</strong></div>
-          <div><span>Accepted</span><strong className="student-card__accepted">{(student.applications || []).filter((a) => a.decision === 'Accepted').length}</strong></div>
-          <div><span>Profile</span><strong>{student.isProfileCompleted ? '100%' : 'Needs work'}</strong></div>
-        </div>
-        <div className="student-card__footer">
-          <span className="student-card__mentor">Mentor: {student.assignedCounselor || 'Unassigned'}</span>
-          <span className="student-card__view">View Profile <span>→</span></span>
-        </div>
+        <h4>{student.fullName}</h4>
+        <p>{student.major}</p>
       </div>
     </button>
   )
@@ -935,8 +920,6 @@ export default function AdminDashboard() {
   const [filterUniversity, setFilterUniversity] = useState('all')
   const [filterGender, setFilterGender] = useState('all')
   const [filterDecision, setFilterDecision] = useState('all')
-  const [searchQuery, setSearchQuery] = useState('')
-  const [sortBy, setSortBy] = useState('newest')
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedStudentId, setSelectedStudentId] = useState(null)
   const [activeTab, setActiveTab] = useState('profile')
@@ -1023,27 +1006,14 @@ export default function AdminDashboard() {
 
   const filteredStudents = useMemo(() => {
     let result = [...students]
-    const query = searchQuery.trim().toLowerCase()
 
-    if (query) {
-      result = result.filter((s) =>
-        [s.fullName, s.email, s.major, s.university, s.assignedCounselor]
-          .filter(Boolean)
-          .some((value) => String(value).toLowerCase().includes(query)),
-      )
-    }
     if (filterMajor !== 'all') result = result.filter((s) => s.major === filterMajor)
     if (filterUniversity !== 'all') result = result.filter((s) => s.university === filterUniversity)
     if (filterGender !== 'all') result = result.filter((s) => s.gender === filterGender)
     if (filterDecision !== 'all') result = result.filter((s) => s.decision === filterDecision)
 
-    if (sortBy === 'name') result.sort((a, b) => (a.fullName || '').localeCompare(b.fullName || ''))
-    if (sortBy === 'applications') result.sort((a, b) => (b.applications?.length || 0) - (a.applications?.length || 0))
-    if (sortBy === 'completion') result.sort((a, b) => Number(b.isProfileCompleted) - Number(a.isProfileCompleted))
-    if (sortBy === 'newest') result.sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')))
-
     return result
-  }, [students, searchQuery, filterMajor, filterUniversity, filterGender, filterDecision, sortBy])
+  }, [students, filterMajor, filterUniversity, filterGender, filterDecision])
 
   const majorData = useMemo(() => toPercentMap(buildCounts(filteredStudents, 'major')), [filteredStudents])
   const universityData = useMemo(() => toPercentMap(buildCounts(filteredStudents, 'university')), [filteredStudents])
@@ -1062,27 +1032,6 @@ export default function AdminDashboard() {
   const universities = [...new Set(students.map((s) => s.university))]
   const genders = [...new Set(students.map((s) => s.gender))]
   const decisions = [...new Set(students.map((s) => s.decision))]
-
-  const dashboardMetrics = useMemo(() => {
-    const applications = students.reduce((sum, s) => sum + (s.applications?.length || 0), 0)
-    const accepted = students.reduce((sum, s) => sum + (s.applications || []).filter((a) => a.decision === 'Accepted').length, 0)
-    const pending = students.reduce((sum, s) => sum + (s.applications || []).filter((a) => ['Pending', 'In Review', 'In Progress'].includes(a.decision) || ['In Review', 'In Progress'].includes(a.status)).length, 0)
-    const completed = students.filter((s) => s.isProfileCompleted).length
-    const incomplete = students.length - completed
-    const upcoming = students.reduce((sum, s) => sum + (s.applications || []).filter((a) => a.deadline && new Date(a.deadline) >= new Date() && new Date(a.deadline) <= new Date(Date.now() + 1000 * 60 * 60 * 24 * 14)).length, 0)
-    const missingDocs = students.reduce((sum, s) => sum + (s.applications || []).filter((a) => !a.documents || Object.values(a.documents).every((v) => !Array.isArray(v) || v.length === 0)).length, 0)
-    return { applications, accepted, pending, completed, incomplete, upcoming, missingDocs }
-  }, [students])
-
-  function clearFilters() {
-    setSearchQuery('')
-    setFilterMajor('all')
-    setFilterUniversity('all')
-    setFilterGender('all')
-    setFilterDecision('all')
-    setSortBy('newest')
-    setCurrentPage(1)
-  }
 
   function openStudent(student) {
     setSelectedStudentId(student.id)
@@ -1528,103 +1477,110 @@ function removeDocumentFromStudentApplication(prevStudents, studentId, applicati
   }
 
   return (
-    <div className="app-shell admin-modern">
+    <div className="app-shell">
       <div className="ambient ambient--one"></div>
       <div className="ambient ambient--two"></div>
 
-      <aside className="admin-sidebar">
-        <div className="admin-brand"><span className="admin-brand__mark">◈</span><span>AppTrack</span></div>
-        <button className="sidebar-link sidebar-link--active">⌂ <span>Dashboard</span></button>
-        <div className="sidebar-label">MANAGE</div>
-        {['All Students', 'Applications', 'Documents', 'Education', 'Licenses', 'Projects', 'Certificates', 'Skills', 'Experience'].map((item) => (
-          <button key={item} className="sidebar-link">{item === 'All Students' ? '♙' : item === 'Applications' ? '▣' : item === 'Documents' ? '▤' : item === 'Education' ? '⌂' : item === 'Licenses' ? '▥' : item === 'Projects' ? '◇' : item === 'Certificates' ? '✧' : item === 'Skills' ? '♧' : '◌'} <span>{item}</span></button>
-        ))}
-        <div className="sidebar-label">MENTORS</div>
-        <button className="sidebar-link">♙ <span>Mentors</span></button>
-        <button className="sidebar-link">◇ <span>Mentor Requests</span></button>
-        <div className="sidebar-label">COMMUNICATION</div>
-        <button className="sidebar-link" onClick={() => setNotifOpen(true)}>♧ <span>Notifications</span>{notifCount > 0 && <b>{notifCount}</b>}</button>
-        <div className="sidebar-label">SYSTEM</div>
-        <button className="sidebar-link">⚙ <span>Settings</span></button>
-        <button className="sidebar-link">▧ <span>Reports</span></button>
-      </aside>
+      <header className="topbar">
+        <div>
+          <h1 className="topbar__title">Student Manager</h1>
+          <p className="topbar__subtitle">
+            Admin overview, private editing access, and student application control
+          </p>
+        </div>
 
-      <div className="admin-main">
-        <header className="topbar">
-          <div>
-            <h1 className="topbar__title">Admin Dashboard</h1>
-            <p className="topbar__subtitle">Welcome back, Admin 👋</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <button className="notification-btn" onClick={() => setNotifOpen(true)}>
+            <span className="notification-btn__icon">🔔</span>
+            Notifications
+            {notifCount > 0 && <span className="notification-btn__count">{notifCount}</span>}
+          </button>
+          <button
+            type="button"
+            className="notification-btn"
+            onClick={async () => {
+              await signOut()
+              navigate('/')
+            }}
+            style={{ background: 'linear-gradient(135deg, #dc2626, #b91c1c)', padding: '10px 16px' }}
+          >
+            Sign out
+          </button>
+        </div>
+      </header>
+
+      <main className="dashboard-content">
+        <section className="stats-section">
+          <TotalStudentsCard total={filteredStudents.length} />
+
+          <div className="charts-grid">
+            <PieChartCard title="Major Distribution" data={majorData} />
+            <PieChartCard title="University Distribution" data={universityData} />
+            <PieChartCard title="Gender Distribution" data={genderData} />
+            <PieChartCard title="Decision Rate" data={decisionData} />
           </div>
-          <div className="topbar__actions">
-            <label className="global-search">
-              <span>⌕</span>
-              <input value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1) }} placeholder="Search students by name, email or ID..." />
-            </label>
-            <button className="header-icon-btn" onClick={() => setNotifOpen(true)}>♧{notifCount > 0 && <span>{notifCount}</span>}</button>
-            <button className="header-icon-btn">?</button>
-            <button className="admin-user">
-              <Avatar name="Admin" size="sm" />
-              <span><strong>Admin</strong><small>Administrator</small></span>⌄
-            </button>
-            <button className="signout-btn" onClick={async () => { await signOut(); navigate('/') }}>Sign out</button>
+        </section>
+
+        <section className="students-section">
+          <div className="filters-bar">
+            <select
+              value={filterMajor}
+              onChange={(e) => { setFilterMajor(e.target.value); setCurrentPage(1) }}
+            >
+              <option value="all">All Majors</option>
+              {majors.map((item) => (
+                <option key={item} value={item}>{item}</option>
+              ))}
+            </select>
+
+            <select
+              value={filterUniversity}
+              onChange={(e) => { setFilterUniversity(e.target.value); setCurrentPage(1) }}
+            >
+              <option value="all">All Universities</option>
+              {universities.map((item) => (
+                <option key={item} value={item}>{item}</option>
+              ))}
+            </select>
+
+            <select
+              value={filterGender}
+              onChange={(e) => { setFilterGender(e.target.value); setCurrentPage(1) }}
+            >
+              <option value="all">All Genders</option>
+              {genders.map((item) => (
+                <option key={item} value={item}>{item}</option>
+              ))}
+            </select>
+
+            <select
+              value={filterDecision}
+              onChange={(e) => { setFilterDecision(e.target.value); setCurrentPage(1) }}
+            >
+              <option value="all">All Decisions</option>
+              {decisions.map((item) => (
+                <option key={item} value={item}>{item}</option>
+              ))}
+            </select>
           </div>
-        </header>
 
-        <main className="dashboard-content">
-          <section className="metric-grid">
-            <div className="metric-card"><span className="metric-icon">♙</span><span>Total Students</span><strong>{students.length}</strong><small>All registered students</small></div>
-            <div className="metric-card"><span className="metric-icon">◉</span><span>Active Students</span><strong>{students.filter((s) => s.isProfileCompleted).length}</strong><small>{students.length ? Math.round((students.filter((s) => s.isProfileCompleted).length / students.length) * 100) : 0}% of total</small></div>
-            <div className="metric-card"><span className="metric-icon">▣</span><span>Applications</span><strong>{dashboardMetrics.applications}</strong><small>Across all students</small></div>
-            <div className="metric-card metric-card--green"><span className="metric-icon">✓</span><span>Accepted</span><strong>{dashboardMetrics.accepted}</strong><small>Accepted applications</small></div>
-            <div className="metric-card metric-card--orange"><span className="metric-icon">◷</span><span>Pending</span><strong>{dashboardMetrics.pending}</strong><small>Need follow-up</small></div>
-            <div className="metric-card"><span className="metric-icon">◌</span><span>Profile Completion</span><strong>{students.length ? Math.round((dashboardMetrics.completed / students.length) * 100) : 0}%</strong><small>Average completion</small></div>
-          </section>
+          <div className="students-grid">
+            {currentStudents.map((student) => (
+              <StudentCard
+                key={student.id}
+                student={student}
+                onOpen={openStudent}
+              />
+            ))}
+          </div>
 
-          <section className="overview-grid">
-            <div className="charts-grid charts-grid--four">
-              <PieChartCard title="Major Distribution" data={majorData} />
-              <PieChartCard title="University Distribution" data={universityData} />
-              <PieChartCard title="Gender Distribution" data={genderData} />
-              <PieChartCard title="Decision Rate" data={decisionData} />
-            </div>
-            <aside className="attention-card">
-              <div className="side-card__head"><h3>Attention Required</h3><b>{dashboardMetrics.incomplete + dashboardMetrics.upcoming}</b></div>
-              <div className="attention-list">
-                <div><span>▣</span><p>Incomplete Profiles</p><b>{dashboardMetrics.incomplete}</b></div>
-                <div><span>◷</span><p>Upcoming Deadlines</p><b>{dashboardMetrics.upcoming}</b></div>
-                <div><span>▤</span><p>Missing Documents</p><b>{dashboardMetrics.missingDocs}</b></div>
-                <div><span>♙</span><p>Visibility Requests</p><b>{notifications.filter((n) => n.status === 'pending').length}</b></div>
-              </div>
-              <button className="side-card__action" onClick={() => setNotifOpen(true)}>View All</button>
-            </aside>
-          </section>
-
-          <section className="students-section">
-            <div className="filters-panel">
-              <div className="filter-row">
-                <label className="filter-search"><span>⌕</span><input value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1) }} placeholder="Search students..." /></label>
-                <select value={filterMajor} onChange={(e) => { setFilterMajor(e.target.value); setCurrentPage(1) }}><option value="all">All Majors</option>{majors.map((item) => <option key={item} value={item}>{item}</option>)}</select>
-                <select value={filterUniversity} onChange={(e) => { setFilterUniversity(e.target.value); setCurrentPage(1) }}><option value="all">All Universities</option>{universities.map((item) => <option key={item} value={item}>{item}</option>)}</select>
-                <select value={filterGender} onChange={(e) => { setFilterGender(e.target.value); setCurrentPage(1) }}><option value="all">All Genders</option>{genders.map((item) => <option key={item} value={item}>{item}</option>)}</select>
-                <select value={filterDecision} onChange={(e) => { setFilterDecision(e.target.value); setCurrentPage(1) }}><option value="all">All Decisions</option>{decisions.map((item) => <option key={item} value={item}>{item}</option>)}</select>
-              </div>
-              <div className="filter-row filter-row--second">
-                <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}><option value="newest">Newest Students</option><option value="name">Name A–Z</option><option value="applications">Most Applications</option><option value="completion">Profile Completion</option></select>
-                <button className="clear-filters-btn" onClick={clearFilters}>Clear Filters</button>
-              </div>
-              {(searchQuery || filterMajor !== 'all' || filterUniversity !== 'all' || filterGender !== 'all' || filterDecision !== 'all') && (
-                <div className="active-filters"><strong>Active Filters:</strong>{searchQuery && <span>Search: {searchQuery} ×</span>}{filterMajor !== 'all' && <span>{filterMajor} ×</span>}{filterUniversity !== 'all' && <span>{filterUniversity} ×</span>}{filterGender !== 'all' && <span>{filterGender} ×</span>}{filterDecision !== 'all' && <span>{filterDecision} ×</span>}<button onClick={clearFilters}>Clear all</button></div>
-              )}
-            </div>
-
-            <div className="students-grid">
-              {currentStudents.length ? currentStudents.map((student) => <StudentCard key={student.id} student={student} onOpen={openStudent} />) : <div className="empty-students"><div>⌕</div><h3>No students found</h3><p>Try changing your filters or search.</p><button onClick={clearFilters}>Clear filters</button></div>}
-            </div>
-
-            <div className="student-list-footer"><span>Showing {filteredStudents.length ? (currentPage - 1) * studentsPerPage + 1 : 0} to {Math.min(currentPage * studentsPerPage, filteredStudents.length)} of {filteredStudents.length} students</span><Pagination currentPage={currentPage} totalPages={totalPages} setCurrentPage={setCurrentPage} /></div>
-          </section>
-        </main>
-      </div>
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            setCurrentPage={setCurrentPage}
+          />
+        </section>
+      </main>
 
       <PublicStudentDrawer
       student={selectedStudent}
