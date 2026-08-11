@@ -34,6 +34,8 @@ import RoleRoute from './components/RoleRoute'
 
 import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
+import ForgotPasswordPage from './pages/ForgotPasswordPage'
+import ResetPasswordPage from './pages/ResetPasswordPage'
 import RegisterPage from './pages/RegisterPage'
 import CompleteProfilePage from './pages/CompleteProfilePage'
 import StudentDashboard from './pages/StudentDashboard'
@@ -94,6 +96,8 @@ function App() {
           </PublicRoute>
         }
       />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
 
       {/* ── Protected route (any authenticated user) ────────────── */}
       <Route

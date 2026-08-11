@@ -664,6 +664,14 @@ export default function StudentDashboard() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <button
+            type="button"
+            className="notification-btn"
+            onClick={() => navigate('/home-page')}
+            title="Go to Home"
+          >
+            Home
+          </button>
           <button type="button" className="selfcard" onClick={() => setActiveTab('profile')} title="View your profile">
             <Avatar name={me.fullName} photoUrl={me.photoUrl} size="sm" className="selfcard__avatar-el" />
             <span className="selfcard__meta">

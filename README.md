@@ -3,7 +3,7 @@
 AppTrack is a comprehensive Student Application Tracking System designed to help students manage their university applications, academic transcripts, and certifications in one secure, organized platform.
 
 ## 🚀 Live Demo
-[https://apptrack2.vercel.app/](https://apptrack2.vercel.app/)
+[https://apptrack2.vercel.app/](https://apptrack2-vdnx-khaki.vercel.app/)
 
 ## ✨ Key Features
 - **Role-Based Access:** Dedicated interfaces for Students and Admins.

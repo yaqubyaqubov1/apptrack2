@@ -209,6 +209,12 @@ export default function LoginPage() {
                 </div>
               </div>
 
+              <div className="login-forgot-row">
+                <Link to="/forgot-password" className="login-forgot-link">
+                  Forgot password?
+                </Link>
+              </div>
+
               {error && (
                 <div className="login-msg login-msg--error" role="alert">
                   <span>⚠️</span> {error}
