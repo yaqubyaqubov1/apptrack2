@@ -44,8 +44,9 @@ const DOC_CATEGORIES = [
   { key: 'other', label: 'Other' },
 ]
 
-export default function StudentDashboard() {
-  const { user, signOut } = useAuth()
+export default function StudentDashboard({ profileMode = false }) {
+  const { user, profile, signOut } = useAuth()
+  const isAdmin = profile?.role === 'admin'
   const navigate = useNavigate()
 
   const [me, setMe] = useState({
@@ -77,12 +78,40 @@ export default function StudentDashboard() {
   const [nameDraft, setNameDraft] = useState('')
   const [editingContact, setEditingContact] = useState(false)
   const [contactDraft, setContactDraft] = useState({ email: '', phone: '' })
+  const [editingAcademic, setEditingAcademic] = useState(false)
+  const [academicDraft, setAcademicDraft] = useState({ major: '', university: '', gender: '' })
   
   // Pre-populate contactDraft with current values when editing starts
   const startEditingContact = useCallback(() => {
     setContactDraft({ email: me.email, phone: me.phone })
     setEditingContact(true)
   }, [me.email, me.phone])
+
+  const startEditingAcademic = useCallback(() => {
+    setAcademicDraft({ major: me.major, university: me.university, gender: me.gender })
+    setEditingAcademic(true)
+  }, [me.major, me.university, me.gender])
+
+  const saveAcademic = useCallback(async () => {
+    if (!user?.id) return
+
+    try {
+      await setProfile(user.id, {
+        major: academicDraft.major,
+        university: academicDraft.university,
+        gender: academicDraft.gender,
+      })
+      setMe((prev) => ({
+        ...prev,
+        major: academicDraft.major,
+        university: academicDraft.university,
+        gender: academicDraft.gender,
+      }))
+      setEditingAcademic(false)
+    } catch (error) {
+      console.error('Failed to save academic profile:', error)
+    }
+  }, [user?.id, academicDraft])
 
   // Application modal
   const [appModal, setAppModal] = useState({ open: false, application: null })
@@ -659,27 +688,27 @@ export default function StudentDashboard() {
 
       <header className="topbar">
         <div>
-          <h1 className="topbar__title">Student Dashboard</h1>
-          <p className="topbar__subtitle">Manage your own profile, applications and certifications.</p>
+          <h1 className="topbar__title">{profileMode || isAdmin ? 'My Profile' : 'Student Dashboard'}</h1>
+          <p className="topbar__subtitle">{isAdmin ? 'Manage your own administrator profile and account information.' : 'Manage your own profile, applications and certifications.'}</p>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <button
-            type="button"
-            className="notification-btn"
-            onClick={() => navigate('/home-page')}
-            title="Go to Home"
-          >
-            Home
-          </button>
-          <button type="button" className="selfcard" onClick={() => setActiveTab('profile')} title="View your profile">
-            <Avatar name={me.fullName} photoUrl={me.photoUrl} size="sm" className="selfcard__avatar-el" />
-            <span className="selfcard__meta">
-              <strong>{me.fullName}</strong>
-              <small>{me.major}</small>
-            </span>
-            <VisibilityChip value={me.visibility?.profile} />
-          </button>
+        <div className="student-topbar-actions">
+          {!profileMode && (
+            <button type="button" className="selfcard" onClick={() => navigate('/profile')} title="View your profile">
+              <Avatar name={me.fullName} photoUrl={me.photoUrl} size="sm" className="selfcard__avatar-el" />
+              <span className="selfcard__meta">
+                <strong>{me.fullName}</strong>
+                <small>{me.major}</small>
+              </span>
+              <VisibilityChip value={me.visibility?.profile} />
+            </button>
+          )}
+          {isAdmin && (
+            <button type="button" className="notification-btn" onClick={() => navigate('/admin')}>Admin Panel</button>
+          )}
+          {!profileMode && !isAdmin && (
+            <button type="button" className="notification-btn" onClick={() => navigate('/home-page')}>Home</button>
+          )}
           <button
             type="button"
             className="notification-btn"
@@ -845,14 +874,40 @@ export default function StudentDashboard() {
               <div className="section-head">
                 <div>
                   <h3>Profile Information</h3>
-                  <p className="section-head__sub">Academic details are managed by your admin/counselor.</p>
+                  <p className="section-head__sub">{isAdmin ? 'You are an admin, so you can edit your own profile information here.' : 'Academic details are managed by your admin/counselor.'}</p>
                 </div>
+                {isAdmin && (
+                  editingAcademic ? (
+                    <div className="student-inline-actions">
+                      <button type="button" className="solid-btn solid-btn--sm" onClick={saveAcademic}>Save</button>
+                      <button type="button" className="ghost-btn solid-btn--sm" onClick={() => setEditingAcademic(false)}>Cancel</button>
+                    </div>
+                  ) : (
+                    <button type="button" className="solid-btn solid-btn--sm" onClick={startEditingAcademic}><span className="btn-plus">✎</span> Edit</button>
+                  )
+                )}
               </div>
               <div className="info-grid">
                 <div className="info-card"><span>Full Name</span><strong>{me.fullName}</strong></div>
-                <div className="info-card"><span>Major</span><strong>{me.major}</strong></div>
-                <div className="info-card"><span>University</span><strong>{me.university}</strong></div>
-                <div className="info-card"><span>Gender</span><strong>{me.gender}</strong></div>
+                <div className="info-card">
+                  <span>Major</span>
+                  {isAdmin && editingAcademic ? <input className="inline-input" value={academicDraft.major} onChange={(e) => setAcademicDraft((d) => ({ ...d, major: e.target.value }))} /> : <strong>{me.major || '—'}</strong>}
+                </div>
+                <div className="info-card">
+                  <span>University</span>
+                  {isAdmin && editingAcademic ? <input className="inline-input" value={academicDraft.university} onChange={(e) => setAcademicDraft((d) => ({ ...d, university: e.target.value }))} /> : <strong>{me.university || '—'}</strong>}
+                </div>
+                <div className="info-card">
+                  <span>Gender</span>
+                  {isAdmin && editingAcademic ? (
+                    <select className="inline-input" value={academicDraft.gender} onChange={(e) => setAcademicDraft((d) => ({ ...d, gender: e.target.value }))}>
+                      <option value="">Select gender</option>
+                      <option value="Female">Female</option>
+                      <option value="Male">Male</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  ) : <strong>{me.gender || '—'}</strong>}
+                </div>
                 <div className="info-card info-card--readonly">
                   <span>Assigned Counselor <em className="readonly-tag">read-only</em></span>
                   <strong>{me.assignedCounselor || '—'}</strong>

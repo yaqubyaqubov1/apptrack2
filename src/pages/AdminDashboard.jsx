@@ -1690,7 +1690,7 @@ function removeDocumentFromStudentApplication(prevStudents, studentId, applicati
 
         <div className="topbar-actions">
           <button type="button" className="ghost-btn ghost-btn--sm topbar-nav-btn" onClick={() => navigate('/home-page')}>Home</button>
-          <button type="button" className="ghost-btn ghost-btn--sm topbar-nav-btn" onClick={() => navigate('/student')}>My Profile</button>
+          <button type="button" className="ghost-btn ghost-btn--sm topbar-nav-btn" onClick={() => navigate('/profile')}>My Profile</button>
           <button className="notification-btn" onClick={() => setNotifOpen(true)}>
 
 
@@ -1721,7 +1721,7 @@ function removeDocumentFromStudentApplication(prevStudents, studentId, applicati
           </div>
           <div className="admin-welcome__actions">
             <button type="button" className="ghost-btn" onClick={() => navigate('/home-page')}>Home</button>
-            <button type="button" className="solid-btn" onClick={() => navigate('/student')}>My Profile</button>
+            <button type="button" className="solid-btn" onClick={() => navigate('/profile')}>My Profile</button>
           </div>
         </section>
 

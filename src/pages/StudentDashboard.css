@@ -606,3 +606,30 @@
   font-weight: 500;
   color: #0f172a;
 }
+
+
+.student-topbar-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.student-inline-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.inline-input {
+  width: 100%;
+  min-width: 0;
+}
+
+@media (max-width: 760px) {
+  .student-topbar-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}

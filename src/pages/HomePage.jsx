@@ -212,7 +212,7 @@ export default function HomePage() {
 
       {/* ── Nav ── */}
       <nav className="hp-nav">
-        <Link to="/" className="hp-logo">
+        <Link to={isLoggedIn ? '/home-page' : '/'} className="hp-logo">
           app<span className="hp-logo__accent">track</span>
         </Link>
         <ul className="hp-nav-links">
@@ -222,7 +222,11 @@ export default function HomePage() {
         <div className="hp-nav-actions">
           {isLoggedIn ? (
             <>
-              <Link to={dashboardPath} className="hp-btn hp-btn-ghost">Dashboard</Link>
+              <Link to="/profile" className="hp-btn hp-btn-ghost">My Profile</Link>
+              {isAdmin && (
+                <Link to="/admin" className="hp-btn hp-btn-ghost">Admin Panel</Link>
+              )}
+              <Link to={dashboardPath} className="hp-btn hp-btn-primary">Dashboard</Link>
               <button type="button" className="hp-btn hp-btn-primary" onClick={signOut}>Sign out</button>
             </>
           ) : (
