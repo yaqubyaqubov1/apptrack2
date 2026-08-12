@@ -44,9 +44,38 @@ const DOC_CATEGORIES = [
   { key: 'other', label: 'Other' },
 ]
 
-export default function StudentDashboard({ profileMode = false }) {
-  const { user, profile, signOut } = useAuth()
-  const isAdmin = profile?.role === 'admin'
+function EmptyContent({ icon = '📘', title, text, action, onAction }) {
+  return <div className="empty-state empty-state--cert"><div className="empty-state__icon">{icon}</div><h4>{title}</h4><p>{text}</p>{action && <button type="button" className="solid-btn solid-btn--sm" onClick={onAction}>{action}</button>}</div>
+}
+
+function ContentManager({ title, subtitle, addLabel, onAdd, children }) {
+  return <section className="students-section"><div className="section-head section-head--stack"><div><h3>{title}</h3><p className="section-head__sub">{subtitle}</p></div><button type="button" className="solid-btn solid-btn--sm" onClick={onAdd}><span className="btn-plus">＋</span> {addLabel}</button></div><div className="content-list">{children}</div></section>
+}
+
+
+function ProfileContentModal({ open, type, item, onClose, onSave }) {
+  const [form, setForm] = useState(item || {})
+  useEffect(() => setForm(item || {}), [item, open, type])
+  if (!open) return null
+  const config = {
+    education: { title: item ? 'Edit education' : 'Add education', fields: [['institution_name','Institution name','text'],['school_type','Type (school/university)','text'],['degree','Degree','text'],['major','Major','text'],['gpa','GPA','number'],['start_date','Start date','date'],['end_date','End date','date'],['status','Status','text'],['transcript_url','Transcript URL','url']] },
+    projects: { title: item ? 'Edit project' : 'Add project', fields: [['title','Project name','text'],['project_type','Project type','text'],['technologies','Technologies','text'],['description','Description','textarea'],['github_url','GitHub URL','url'],['demo_url','Demo URL','url']] },
+    portfolio_links: { title: item ? 'Edit portfolio link' : 'Add portfolio link', fields: [['platform','Platform','text'],['label','Label','text'],['url','URL','url']] },
+    skills: { title: item ? 'Edit skill' : 'Add skill', fields: [['name','Skill name','text'],['category','Category: Technical / Language / Soft','text'],['level','Level','text']] },
+    competitions: { title: item ? 'Edit achievement' : 'Add achievement', fields: [['name','Name','text'],['type','Type','text'],['organizer','Organizer','text'],['rank','Rank / award','text'],['date','Date','date'],['description','Description','textarea']] },
+    experience: { title: item ? 'Edit experience' : 'Add experience', fields: [['title','Title / role','text'],['type','Type: Internship / Research / Volunteer / Work','text'],['organization','Organization','text'],['start_date','Start date','date'],['end_date','End date','date'],['description','Description','textarea']] },
+    goals: { title: item ? 'Edit goal' : 'Add goal', fields: [['title','Goal title','text'],['type','Type: Academic / Career / Personal','text'],['progress','Progress %','number'],['description','Description','textarea']] },
+  }[type]
+  const submit = (e) => { e.preventDefault(); onSave({ ...form, visibility: form.visibility || 'private' }) }
+  return <div className="modal-backdrop" onClick={onClose}><div className="modal profile-content-modal" onClick={(e)=>e.stopPropagation()}><div className="modal__head"><div><p className="modal__eyebrow">Student profile</p><h3>{config?.title || 'Edit'}</h3></div><button type="button" className="drawer-close" onClick={onClose}>✕</button></div><form className="modal__form" onSubmit={submit}>{(config?.fields || []).map(([key,label,kind])=><label className="field" key={key}><span>{label}</span>{kind === 'textarea' ? <textarea value={form[key] || ''} onChange={(e)=>setForm(f=>({...f,[key]:e.target.value}))} /> : <input type={kind} value={form[key] || ''} onChange={(e)=>setForm(f=>({...f,[key]:e.target.value}))} />}</label>)}{type !== 'goals' && <div className="field field--inline"><span>Visibility</span><VisibilityToggle value={form.visibility || 'private'} onChange={(v)=>setForm(f=>({...f,visibility:v}))}/></div>}<div className="modal__foot"><button type="button" className="ghost-btn" onClick={onClose}>Cancel</button><button type="submit" className="solid-btn">Save</button></div></form></div></div>
+}
+
+function ContentCard({ title, subtitle, meta, details = [], visibility, onVisibility, onEdit, onDelete, link }) {
+  return <article className="content-card"><div className="content-card__main"><div className="content-card__title-row"><div><h4>{title || 'Untitled'}</h4><p>{subtitle || ''}</p></div><div className="content-card__actions">{onEdit && <button type="button" className="icon-btn" title="Edit" onClick={onEdit}>✎</button>}{onDelete && <button type="button" className="icon-btn icon-btn--danger" title="Delete" onClick={onDelete}>🗑</button>}</div></div>{meta && <small className="content-card__meta">{meta}</small>}{details.filter(Boolean).slice(0,2).map((d,i)=><p className="content-card__detail" key={i}>{d}</p>)}<div className="content-card__foot">{onVisibility && <VisibilityToggle value={visibility || 'private'} onChange={onVisibility} />}{link && <a className="pill-link" href={link} target="_blank" rel="noreferrer">Open ↗</a>}</div></div></article>
+}
+
+export default function StudentDashboard() {
+  const { user, signOut } = useAuth()
   const navigate = useNavigate()
 
   const [me, setMe] = useState({
@@ -65,9 +94,20 @@ export default function StudentDashboard({ profileMode = false }) {
     visibility: {},
     applications: [],
     licenses: [],
+    assignedMentor: '',
   })
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState('profile')
+  const [activeTab, setActiveTab] = useState('overview')
+  const [contentLoading, setContentLoading] = useState(false)
+  const [education, setEducation] = useState([])
+  const [projects, setProjects] = useState([])
+  const [portfolioLinks, setPortfolioLinks] = useState([])
+  const [skills, setSkills] = useState([])
+  const [competitions, setCompetitions] = useState([])
+  const [experience, setExperience] = useState([])
+  const [goals, setGoals] = useState([])
+  const [recommendations, setRecommendations] = useState([])
+  const [profileModal, setProfileModal] = useState({ open: false, type: null, item: null })
   const [publicStudents, setPublicStudents] = useState([])
   const [selectedPublicStudent, setSelectedPublicStudent] = useState(null)
   const [publicStudentActiveTab, setPublicStudentActiveTab] = useState('profile')
@@ -78,40 +118,12 @@ export default function StudentDashboard({ profileMode = false }) {
   const [nameDraft, setNameDraft] = useState('')
   const [editingContact, setEditingContact] = useState(false)
   const [contactDraft, setContactDraft] = useState({ email: '', phone: '' })
-  const [editingAcademic, setEditingAcademic] = useState(false)
-  const [academicDraft, setAcademicDraft] = useState({ major: '', university: '', gender: '' })
   
   // Pre-populate contactDraft with current values when editing starts
   const startEditingContact = useCallback(() => {
     setContactDraft({ email: me.email, phone: me.phone })
     setEditingContact(true)
   }, [me.email, me.phone])
-
-  const startEditingAcademic = useCallback(() => {
-    setAcademicDraft({ major: me.major, university: me.university, gender: me.gender })
-    setEditingAcademic(true)
-  }, [me.major, me.university, me.gender])
-
-  const saveAcademic = useCallback(async () => {
-    if (!user?.id) return
-
-    try {
-      await setProfile(user.id, {
-        major: academicDraft.major,
-        university: academicDraft.university,
-        gender: academicDraft.gender,
-      })
-      setMe((prev) => ({
-        ...prev,
-        major: academicDraft.major,
-        university: academicDraft.university,
-        gender: academicDraft.gender,
-      }))
-      setEditingAcademic(false)
-    } catch (error) {
-      console.error('Failed to save academic profile:', error)
-    }
-  }, [user?.id, academicDraft])
 
   // Application modal
   const [appModal, setAppModal] = useState({ open: false, application: null })
@@ -132,6 +144,23 @@ export default function StudentDashboard({ profileMode = false }) {
     [me.licenses],
   )
 
+  const profileCompletion = useMemo(() => {
+    const checks = [
+      Boolean(me.fullName), Boolean(me.email), Boolean(me.phone), Boolean(me.major),
+      Boolean(me.university), education.length > 0, projects.length > 0,
+      portfolioLinks.length > 0, (me.licenses || []).length > 0, skills.length > 0,
+      competitions.length > 0, experience.length > 0, goals.length > 0,
+    ]
+    return Math.round((checks.filter(Boolean).length / checks.length) * 100)
+  }, [me, education.length, projects.length, portfolioLinks.length, skills.length, competitions.length, experience.length, goals.length])
+
+  const applicationProgress = useMemo(() => {
+    const apps = me.applications || []
+    if (!apps.length) return 0
+    const weights = { 'Not Started': 0, 'In Progress': 0.35, 'Submitted': 0.65, 'In Review': 0.82, Closed: 1 }
+    return Math.round((apps.reduce((sum, app) => sum + (weights[app.status] ?? 0), 0) / apps.length) * 100)
+  }, [me.applications])
+
   // ── Load my profile ──────────────────────────────────────────────
   const loadMyProfile = useCallback(async () => {
     if (!user?.id) return
@@ -147,6 +176,26 @@ export default function StudentDashboard({ profileMode = false }) {
       if (profileError) throw profileError
 
       // Fetch applications separately with explicit relationship
+      const [educationRes, projectsRes, linksRes, skillsRes, competitionsRes, experienceRes, goalsRes, recommendationsRes] = await Promise.all([
+        supabase.from('education').select('*').eq('student_id', user.id).order('start_date', { ascending: false }),
+        supabase.from('projects').select('*').eq('student_id', user.id).order('created_at', { ascending: false }),
+        supabase.from('portfolio_links').select('*').eq('student_id', user.id).order('created_at', { ascending: false }),
+        supabase.from('skills').select('*').eq('student_id', user.id).order('category', { ascending: true }),
+        supabase.from('competitions').select('*').eq('student_id', user.id).order('date', { ascending: false }),
+        supabase.from('experience').select('*').eq('student_id', user.id).order('start_date', { ascending: false }),
+        supabase.from('goals').select('*').eq('student_id', user.id).order('created_at', { ascending: false }),
+        supabase.from('recommendations').select('*').eq('student_id', user.id).order('created_at', { ascending: false }),
+      ])
+
+      if (!educationRes.error) setEducation(educationRes.data || [])
+      if (!projectsRes.error) setProjects(projectsRes.data || [])
+      if (!linksRes.error) setPortfolioLinks(linksRes.data || [])
+      if (!skillsRes.error) setSkills(skillsRes.data || [])
+      if (!competitionsRes.error) setCompetitions(competitionsRes.data || [])
+      if (!experienceRes.error) setExperience(experienceRes.data || [])
+      if (!goalsRes.error) setGoals(goalsRes.data || [])
+      if (!recommendationsRes.error) setRecommendations(recommendationsRes.data || [])
+
       const { data: appsData, error: appsError } = await supabase
         .from('applications')
         .select(`
@@ -303,6 +352,7 @@ export default function StudentDashboard({ profileMode = false }) {
         notes: data.admin_notes || '',
         assignedCounselor: data.assigned_counselor || '',
         decision: data.decision || '',
+        assignedMentor: data.assigned_mentor || data.assigned_counselor || '',
         visibility,
         applications,
         licenses,
@@ -362,6 +412,14 @@ export default function StudentDashboard({ profileMode = false }) {
         { event: '*', schema: 'public', table: 'licenses', filter: `user_id=eq.${user?.id}` },
         () => { loadMyProfile() }
       )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'education', filter: `student_id=eq.${user?.id}` }, () => { loadMyProfile() })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'projects', filter: `student_id=eq.${user?.id}` }, () => { loadMyProfile() })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'portfolio_links', filter: `student_id=eq.${user?.id}` }, () => { loadMyProfile() })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'skills', filter: `student_id=eq.${user?.id}` }, () => { loadMyProfile() })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'competitions', filter: `student_id=eq.${user?.id}` }, () => { loadMyProfile() })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'experience', filter: `student_id=eq.${user?.id}` }, () => { loadMyProfile() })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'goals', filter: `student_id=eq.${user?.id}` }, () => { loadMyProfile() })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'recommendations', filter: `student_id=eq.${user?.id}` }, () => { loadMyProfile() })
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'license_media', filter: `user_id=eq.${user?.id}` },
@@ -667,6 +725,55 @@ export default function StudentDashboard({ profileMode = false }) {
     }
   }, [user?.id, loadMyProfile])
 
+  // ── Extended profile content CRUD ─────────────────────────────────
+  const saveProfileItem = useCallback(async (table, item, setter, fallback = {}) => {
+    if (!user?.id) return
+    const payload = { ...item, student_id: user.id }
+    try {
+      const query = item.id
+        ? supabase.from(table).update(payload).eq('id', item.id).eq('student_id', user.id).select().single()
+        : supabase.from(table).insert(payload).select().single()
+      const { data, error } = await query
+      if (error) throw error
+      setter((prev) => item.id ? prev.map((x) => x.id === item.id ? data : x) : [data, ...prev])
+      setProfileModal({ open: false, type: null, item: null })
+    } catch (error) {
+      console.error(`Failed to save ${table}:`, error)
+      alert(error?.message || `Unable to save ${table}.`)
+    }
+  }, [user?.id])
+
+  const deleteProfileItem = useCallback(async (table, id, setter) => {
+    if (!user?.id || !id) return
+    if (!window.confirm('Delete this item?')) return
+    try {
+      const { error } = await supabase.from(table).delete().eq('id', id).eq('student_id', user.id)
+      if (error) throw error
+      setter((prev) => prev.filter((x) => x.id !== id))
+    } catch (error) {
+      console.error(`Failed to delete ${table}:`, error)
+      alert(error?.message || `Unable to delete this item.`)
+    }
+  }, [user?.id])
+
+  const setItemVisibility = useCallback(async (table, id, value, setter) => {
+    try {
+      const { data, error } = await supabase.from(table).update({ visibility: value }).eq('id', id).eq('student_id', user.id).select().single()
+      if (error) throw error
+      setter((prev) => prev.map((x) => x.id === id ? data : x))
+    } catch (error) {
+      console.error(`Failed to update ${table} visibility:`, error)
+    }
+  }, [user?.id])
+
+  const saveEducation = useCallback((item) => saveProfileItem('education', item, setEducation), [saveProfileItem])
+  const saveProject = useCallback((item) => saveProfileItem('projects', item, setProjects), [saveProfileItem])
+  const savePortfolioLink = useCallback((item) => saveProfileItem('portfolio_links', item, setPortfolioLinks), [saveProfileItem])
+  const saveSkill = useCallback((item) => saveProfileItem('skills', item, setSkills), [saveProfileItem])
+  const saveCompetition = useCallback((item) => saveProfileItem('competitions', item, setCompetitions), [saveProfileItem])
+  const saveExperience = useCallback((item) => saveProfileItem('experience', item, setExperience), [saveProfileItem])
+  const saveGoal = useCallback((item) => saveProfileItem('goals', item, setGoals), [saveProfileItem])
+
   // ── Application expand toggle ────────────────────────────────────
   const toggleApplicationExpanded = useCallback((appId) => {
     setExpandedApplications((prev) =>
@@ -688,27 +795,19 @@ export default function StudentDashboard({ profileMode = false }) {
 
       <header className="topbar">
         <div>
-          <h1 className="topbar__title">{profileMode || isAdmin ? 'My Profile' : 'Student Dashboard'}</h1>
-          <p className="topbar__subtitle">{isAdmin ? 'Manage your own administrator profile and account information.' : 'Manage your own profile, applications and certifications.'}</p>
+          <h1 className="topbar__title">Student Dashboard</h1>
+          <p className="topbar__subtitle">Manage your own profile, applications and certifications.</p>
         </div>
 
-        <div className="student-topbar-actions">
-          {!profileMode && (
-            <button type="button" className="selfcard" onClick={() => navigate('/profile')} title="View your profile">
-              <Avatar name={me.fullName} photoUrl={me.photoUrl} size="sm" className="selfcard__avatar-el" />
-              <span className="selfcard__meta">
-                <strong>{me.fullName}</strong>
-                <small>{me.major}</small>
-              </span>
-              <VisibilityChip value={me.visibility?.profile} />
-            </button>
-          )}
-          {isAdmin && (
-            <button type="button" className="notification-btn" onClick={() => navigate('/admin')}>Admin Panel</button>
-          )}
-          {!profileMode && !isAdmin && (
-            <button type="button" className="notification-btn" onClick={() => navigate('/home-page')}>Home</button>
-          )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <button type="button" className="selfcard" onClick={() => setActiveTab('profile')} title="View your profile">
+            <Avatar name={me.fullName} photoUrl={me.photoUrl} size="sm" className="selfcard__avatar-el" />
+            <span className="selfcard__meta">
+              <strong>{me.fullName}</strong>
+              <small>{me.major}</small>
+            </span>
+            <VisibilityChip value={me.visibility?.profile} />
+          </button>
           <button
             type="button"
             className="notification-btn"
@@ -807,21 +906,69 @@ export default function StudentDashboard({ profileMode = false }) {
               </p>
 
               <div className="student-hero__stats">
+                <div className="hero-stat"><span>Profile</span><strong>{profileCompletion}%</strong></div>
                 <div className="hero-stat"><span>Applications</span><strong>{(me.applications || []).length}</strong></div>
                 <div className="hero-stat"><span>Public apps</span><strong>{publicApplicationsCount}</strong></div>
                 <div className="hero-stat"><span>Certifications</span><strong>{(me.licenses || []).length}</strong></div>
                 <div className="hero-stat"><span>Public certs</span><strong>{publicLicensesCount}</strong></div>
+                <div className="hero-stat"><span>App progress</span><strong>{applicationProgress}%</strong></div>
               </div>
             </div>
           </div>
         </section>
 
         <section className="drawer-tabs student-tabs">
-          <button type="button" className={`drawer-tab ${activeTab === 'profile' ? 'drawer-tab--active' : ''}`} onClick={() => setActiveTab('profile')}>My Profile</button>
-          <button type="button" className={`drawer-tab ${activeTab === 'applications' ? 'drawer-tab--active' : ''}`} onClick={() => setActiveTab('applications')}>My Applications</button>
-          <button type="button" className={`drawer-tab ${activeTab === 'licenses' ? 'drawer-tab--active' : ''}`} onClick={() => setActiveTab('licenses')}>My Certifications</button>
-          <button type="button" className={`drawer-tab ${activeTab === 'explore' ? 'drawer-tab--active' : ''}`} onClick={() => setActiveTab('explore')}>Explore Students</button>
+          {[
+            ['overview', 'Overview'], ['profile', 'My Profile'], ['education', 'Education'],
+            ['applications', 'Applications'], ['documents', 'Documents'], ['projects', 'Projects'],
+            ['portfolio', 'Portfolio'], ['licenses', 'Certificates'], ['skills', 'Skills'],
+            ['competitions', 'Competitions'], ['experience', 'Experience'], ['goals', 'Goals'],
+            ['recommendations', 'Recommendations'], ['activity', 'Activity'], ['explore', 'Explore Students'],
+          ].map(([key, label]) => (
+            <button key={key} type="button" className={`drawer-tab ${activeTab === key ? 'drawer-tab--active' : ''}`} onClick={() => setActiveTab(key)}>{label}</button>
+          ))}
         </section>
+
+        {activeTab === 'overview' && (
+          <div className="student-overview">
+            <section className="students-section">
+              <div className="section-head section-head--stack">
+                <div><h3>Overview</h3><p className="section-head__sub">Your academic profile, application progress and next steps.</p></div>
+              </div>
+              <div className="overview-grid">
+                <div className="overview-progress-card">
+                  <div className="overview-progress-card__head"><span>Profile completion</span><strong>{profileCompletion}%</strong></div>
+                  <div className="progress-track"><span style={{ width: `${profileCompletion}%` }} /></div>
+                  <p>{profileCompletion < 100 ? 'Complete more sections to build a stronger profile.' : 'Your profile is complete.'}</p>
+                </div>
+                <div className="overview-progress-card">
+                  <div className="overview-progress-card__head"><span>Application progress</span><strong>{applicationProgress}%</strong></div>
+                  <div className="progress-track progress-track--cyan"><span style={{ width: `${applicationProgress}%` }} /></div>
+                  <p>{(me.applications || []).length ? 'Based on the current status of your applications.' : 'Add an application to start tracking progress.'}</p>
+                </div>
+              </div>
+            </section>
+            <section className="student-dashboard-grid">
+              <section className="students-section"><div className="section-head"><div><h3>Quick profile</h3><p className="section-head__sub">Key academic information.</p></div></div><div className="info-grid">
+                <div className="info-card"><span>University</span><strong>{me.university || '—'}</strong></div>
+                <div className="info-card"><span>Major</span><strong>{me.major || '—'}</strong></div>
+                <div className="info-card"><span>Assigned Mentor</span><strong>{me.assignedMentor || 'Not assigned'}</strong></div>
+                <div className="info-card"><span>Overall Decision</span><strong>{me.decision || 'Pending'}</strong></div>
+              </div></section>
+              <section className="students-section"><div className="section-head"><div><h3>Next steps</h3><p className="section-head__sub">Complete the items that matter most.</p></div></div><div className="next-steps-list">
+                {[
+                  !education.length && 'Add your education history',
+                  !projects.length && 'Add your first project',
+                  !portfolioLinks.length && 'Add a portfolio link',
+                  !skills.length && 'Add your skills',
+                  !experience.length && 'Add your experience',
+                  !goals.length && 'Set a goal',
+                ].filter(Boolean).slice(0, 4).map((label) => <button key={label} className="next-step-item" type="button" onClick={() => setActiveTab(label.includes('education') ? 'education' : label.includes('project') ? 'projects' : label.includes('portfolio') ? 'portfolio' : label.includes('skills') ? 'skills' : label.includes('experience') ? 'experience' : 'goals')}>＋ {label}</button>)}
+                {!(!education.length || !projects.length || !portfolioLinks.length || !skills.length || !experience.length || !goals.length) && <div className="empty-inline">Everything looks complete 🎉</div>}
+              </div></section>
+            </section>
+          </div>
+        )}
 
         {activeTab === 'profile' && (
           <div className="student-dashboard-grid">
@@ -874,44 +1021,19 @@ export default function StudentDashboard({ profileMode = false }) {
               <div className="section-head">
                 <div>
                   <h3>Profile Information</h3>
-                  <p className="section-head__sub">{isAdmin ? 'You are an admin, so you can edit your own profile information here.' : 'Academic details are managed by your admin/counselor.'}</p>
+                  <p className="section-head__sub">Academic details are managed by your admin/counselor.</p>
                 </div>
-                {isAdmin && (
-                  editingAcademic ? (
-                    <div className="student-inline-actions">
-                      <button type="button" className="solid-btn solid-btn--sm" onClick={saveAcademic}>Save</button>
-                      <button type="button" className="ghost-btn solid-btn--sm" onClick={() => setEditingAcademic(false)}>Cancel</button>
-                    </div>
-                  ) : (
-                    <button type="button" className="solid-btn solid-btn--sm" onClick={startEditingAcademic}><span className="btn-plus">✎</span> Edit</button>
-                  )
-                )}
               </div>
               <div className="info-grid">
                 <div className="info-card"><span>Full Name</span><strong>{me.fullName}</strong></div>
-                <div className="info-card">
-                  <span>Major</span>
-                  {isAdmin && editingAcademic ? <input className="inline-input" value={academicDraft.major} onChange={(e) => setAcademicDraft((d) => ({ ...d, major: e.target.value }))} /> : <strong>{me.major || '—'}</strong>}
-                </div>
-                <div className="info-card">
-                  <span>University</span>
-                  {isAdmin && editingAcademic ? <input className="inline-input" value={academicDraft.university} onChange={(e) => setAcademicDraft((d) => ({ ...d, university: e.target.value }))} /> : <strong>{me.university || '—'}</strong>}
-                </div>
-                <div className="info-card">
-                  <span>Gender</span>
-                  {isAdmin && editingAcademic ? (
-                    <select className="inline-input" value={academicDraft.gender} onChange={(e) => setAcademicDraft((d) => ({ ...d, gender: e.target.value }))}>
-                      <option value="">Select gender</option>
-                      <option value="Female">Female</option>
-                      <option value="Male">Male</option>
-                      <option value="Other">Other</option>
-                    </select>
-                  ) : <strong>{me.gender || '—'}</strong>}
-                </div>
+                <div className="info-card"><span>Major</span><strong>{me.major}</strong></div>
+                <div className="info-card"><span>University</span><strong>{me.university}</strong></div>
+                <div className="info-card"><span>Gender</span><strong>{me.gender}</strong></div>
                 <div className="info-card info-card--readonly">
                   <span>Assigned Counselor <em className="readonly-tag">read-only</em></span>
                   <strong>{me.assignedCounselor || '—'}</strong>
                 </div>
+                <div className="info-card info-card--readonly"><span>Assigned Mentor <em className="readonly-tag">read-only</em></span><strong>{me.assignedMentor || '—'}</strong></div>
                 <div className="info-card info-card--readonly">
                   <span>Overall Decision <em className="readonly-tag">read-only</em></span>
                   <strong>{me.decision || '—'}</strong>
@@ -920,6 +1042,41 @@ export default function StudentDashboard({ profileMode = false }) {
             </section>
           </div>
         )}
+
+        {activeTab === 'education' && (
+          <ContentManager title="Education" subtitle="Build your academic history and keep transcripts with the right institution." addLabel="Add education" onAdd={() => setProfileModal({ open: true, type: 'education', item: null })}>
+            {education.map((item) => <ContentCard key={item.id} title={item.institution_name} subtitle={[item.degree, item.major].filter(Boolean).join(' • ')} meta={[item.start_date, item.end_date || (item.status === 'current' ? 'Present' : '')].filter(Boolean).join(' – ')} details={[item.gpa ? `GPA ${item.gpa}` : '', item.transcript_url ? 'Transcript attached' : ''].filter(Boolean)} visibility={item.visibility} onVisibility={(v) => setItemVisibility('education', item.id, v, setEducation)} onEdit={() => setProfileModal({ open: true, type: 'education', item })} onDelete={() => deleteProfileItem('education', item.id, setEducation)} />)}
+            {!education.length && <EmptyContent icon="🎓" title="No education added" text="Add your school or university history." action="Add education" onAction={() => setProfileModal({ open: true, type: 'education', item: null })} />}
+          </ContentManager>
+        )}
+
+        {activeTab === 'documents' && (
+          <section className="students-section"><div className="section-head"><div><h3>Documents</h3><p className="section-head__sub">A central view of documents attached to your applications.</p></div></div><div className="document-summary-grid">
+            {(me.applications || []).flatMap((a) => Object.entries(a.documents || {}).flatMap(([category, docs]) => (docs || []).map((doc) => ({ ...doc, category, university: a.university })))).map((doc) => <div key={doc.id} className="doc-summary-card"><span className="doc-summary-card__icon">📄</span><div><strong>{doc.name}</strong><small>{doc.university} • {doc.category}</small></div><VisibilityToggle value={doc.visibility || 'private'} onChange={(v) => handleDocumentVisibility(doc.id, v)} /></div>)}
+            {!(me.applications || []).some((a) => Object.values(a.documents || {}).some((docs) => (docs || []).length)) && <EmptyContent icon="📁" title="No documents yet" text="Upload documents inside an application." />}
+          </div></section>
+        )}
+
+        {activeTab === 'projects' && <ContentManager title="Projects" subtitle="Showcase academic, technical, research and personal projects." addLabel="Add project" onAdd={() => setProfileModal({ open: true, type: 'projects', item: null })}>{projects.map((item) => <ContentCard key={item.id} title={item.title} subtitle={item.project_type || 'Project'} meta={item.technologies || ''} details={[item.description, item.github_url].filter(Boolean)} visibility={item.visibility} link={item.demo_url || item.github_url} onVisibility={(v) => setItemVisibility('projects', item.id, v, setProjects)} onEdit={() => setProfileModal({ open: true, type: 'projects', item })} onDelete={() => deleteProfileItem('projects', item.id, setProjects)} />)}{!projects.length && <EmptyContent icon="🛠️" title="No projects yet" text="Add projects to strengthen your profile." action="Add project" onAction={() => setProfileModal({ open: true, type: 'projects', item: null })} />}</ContentManager>}
+
+        {activeTab === 'portfolio' && <ContentManager title="Portfolio" subtitle="Connect your public work and professional profiles." addLabel="Add link" onAdd={() => setProfileModal({ open: true, type: 'portfolio_links', item: null })}><div className="portfolio-grid">{portfolioLinks.map((item) => <ContentCard key={item.id} title={item.label || item.platform} subtitle={item.platform} meta={item.url} visibility={item.visibility} link={item.url} onVisibility={(v) => setItemVisibility('portfolio_links', item.id, v, setPortfolioLinks)} onEdit={() => setProfileModal({ open: true, type: 'portfolio_links', item })} onDelete={() => deleteProfileItem('portfolio_links', item.id, setPortfolioLinks)} />)}</div>{!portfolioLinks.length && <EmptyContent icon="🔗" title="No portfolio links" text="Add GitHub, LinkedIn, website, Kaggle, Behance or other links." action="Add link" onAction={() => setProfileModal({ open: true, type: 'portfolio_links', item: null })} />}</ContentManager>}
+
+        {activeTab === 'skills' && <ContentManager title="Skills" subtitle="Organize technical, language and soft skills." addLabel="Add skill" onAdd={() => setProfileModal({ open: true, type: 'skills', item: null })}><div className="tag-cloud">{skills.map((item) => <div className="skill-pill" key={item.id}><span>{item.name}</span><small>{item.category || 'Technical'}</small><button type="button" onClick={() => deleteProfileItem('skills', item.id, setSkills)}>×</button></div>)}</div>{!skills.length && <EmptyContent icon="💡" title="No skills added" text="Add technical, language or soft skills." action="Add skill" onAction={() => setProfileModal({ open: true, type: 'skills', item: null })} />}</ContentManager>}
+
+        {activeTab === 'competitions' && <ContentManager title="Competitions & Awards" subtitle="Track olympiads, hackathons, awards and achievements." addLabel="Add achievement" onAdd={() => setProfileModal({ open: true, type: 'competitions', item: null })}>{competitions.map((item) => <ContentCard key={item.id} title={item.name} subtitle={item.type || 'Competition'} meta={[item.rank, item.date].filter(Boolean).join(' • ')} details={[item.organizer, item.description].filter(Boolean)} visibility={item.visibility} onVisibility={(v) => setItemVisibility('competitions', item.id, v, setCompetitions)} onEdit={() => setProfileModal({ open: true, type: 'competitions', item })} onDelete={() => deleteProfileItem('competitions', item.id, setCompetitions)} />)}{!competitions.length && <EmptyContent icon="🏆" title="No achievements yet" text="Add competitions, olympiads and awards." action="Add achievement" onAction={() => setProfileModal({ open: true, type: 'competitions', item: null })} />}</ContentManager>}
+
+        {activeTab === 'experience' && <ContentManager title="Experience" subtitle="Record internships, research, volunteering and work." addLabel="Add experience" onAdd={() => setProfileModal({ open: true, type: 'experience', item: null })}>{experience.map((item) => <ContentCard key={item.id} title={item.title} subtitle={`${item.type || 'Experience'}${item.organization ? ` • ${item.organization}` : ''}`} meta={[item.start_date, item.end_date || (item.current ? 'Present' : '')].filter(Boolean).join(' – ')} details={[item.description].filter(Boolean)} visibility={item.visibility} onVisibility={(v) => setItemVisibility('experience', item.id, v, setExperience)} onEdit={() => setProfileModal({ open: true, type: 'experience', item })} onDelete={() => deleteProfileItem('experience', item.id, setExperience)} />)}{!experience.length && <EmptyContent icon="💼" title="No experience yet" text="Add internships, research, volunteer work or jobs." action="Add experience" onAction={() => setProfileModal({ open: true, type: 'experience', item: null })} />}</ContentManager>}
+
+        {activeTab === 'goals' && <ContentManager title="Goals" subtitle="Set short-term and long-term academic or career goals." addLabel="Add goal" onAdd={() => setProfileModal({ open: true, type: 'goals', item: null })}>{goals.map((item) => <ContentCard key={item.id} title={item.title} subtitle={item.type || 'Personal'} meta={`${item.progress ?? 0}% complete`} details={[item.description].filter(Boolean)} onEdit={() => setProfileModal({ open: true, type: 'goals', item })} onDelete={() => deleteProfileItem('goals', item.id, setGoals)} />)}{!goals.length && <EmptyContent icon="🎯" title="No goals yet" text="Set goals to keep your progress focused." action="Add goal" onAction={() => setProfileModal({ open: true, type: 'goals', item: null })} />}</ContentManager>}
+
+        {activeTab === 'recommendations' && <section className="students-section"><div className="section-head"><div><h3>Mentor & Recommendations</h3><p className="section-head__sub">Feedback and recommendations from your mentor/admin.</p></div><span className="count-pill">{recommendations.length}</span></div><div className="recommendation-list">{recommendations.map((item) => <article className="recommendation-card" key={item.id}><div><strong>{item.title || 'Recommendation'}</strong><p>{item.message || item.content || ''}</p><small>{item.author_name || 'AppTrack mentor'}{item.created_at ? ` • ${new Date(item.created_at).toLocaleDateString()}` : ''}</small></div><span className="status-badge status-badge--purple">{item.status || 'Open'}</span></article>)}{!recommendations.length && <EmptyContent icon="💬" title="No recommendations yet" text="Mentor and admin feedback will appear here." />}</div></section>}
+
+        {activeTab === 'activity' && <section className="students-section"><div className="section-head"><div><h3>Activity</h3><p className="section-head__sub">A snapshot of your recent AppTrack progress.</p></div></div><div className="activity-timeline">{[
+          ...(me.applications || []).map((x) => ({ label: `Application: ${x.university || 'University'}`, date: x.created_at, icon: '🎓' })),
+          ...(me.licenses || []).map((x) => ({ label: `Certificate: ${x.name || 'Credential'}`, date: x.created_at, icon: '🏅' })),
+          ...projects.map((x) => ({ label: `Project: ${x.title}`, date: x.created_at, icon: '🛠️' })),
+          ...experience.map((x) => ({ label: `Experience: ${x.title}`, date: x.created_at, icon: '💼' })),
+        ].filter(x => x.date).sort((a,b) => new Date(b.date)-new Date(a.date)).slice(0, 12).map((item, idx) => <div key={`${item.label}-${idx}`} className="activity-item"><span className="activity-item__icon">{item.icon}</span><div><strong>{item.label}</strong><small>{new Date(item.date).toLocaleDateString()}</small></div></div>)}{!me.applications.length && !me.licenses.length && !projects.length && !experience.length && <EmptyContent icon="🕒" title="No activity yet" text="Your AppTrack activity will appear here." />}</div></section>}
 
         {activeTab === 'applications' && (
           <section className="students-section">
@@ -1121,6 +1278,8 @@ export default function StudentDashboard({ profileMode = false }) {
           </section>
         )}
       </main>
+
+      <ProfileContentModal open={profileModal.open} type={profileModal.type} item={profileModal.item} onClose={() => setProfileModal({ open: false, type: null, item: null })} onSave={(payload) => { const map = { education: saveEducation, projects: saveProject, portfolio_links: savePortfolioLink, skills: saveSkill, competitions: saveCompetition, experience: saveExperience, goals: saveGoal }; map[profileModal.type]?.(payload) }} />
 
       <PublicStudentDrawer
       student={selectedPublicStudent}
