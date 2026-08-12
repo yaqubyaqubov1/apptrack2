@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './AdminDashboard.css'
 import Avatar from '../components/Avatar'
@@ -47,7 +47,6 @@ function savePersisted(key, value) {
 }
 
 const PIE_COLORS = ['#7c3aed', '#06b6d4', '#22c55e', '#f97316', '#ef4444', '#8b5cf6', '#14b8a6']
-const STUDENT_PROFILE_URL = 'https://apptrack2.vercel.app/student'
 
 // Document categories shown inside every application
 const DOC_CATEGORIES = [
@@ -242,60 +241,65 @@ function StudentCard({ student, onOpen }) {
     (student.licenses || []).filter((l) => l.visibility === 'public').length
 
   const profilePublic = student.visibility?.profile === 'public'
-  const acceptedApplications = (student.applications || []).filter((a) => a.decision === 'Accepted').length
-
-  function openStudentProfile(event) {
-    event.stopPropagation()
-    window.location.assign(STUDENT_PROFILE_URL)
-  }
-
-  function manageStudent(event) {
-    event.stopPropagation()
-    onOpen(student)
-  }
+  const apps = student.applications || []
+  const accepted = apps.filter((a) => String(a.decision || '').toLowerCase().includes('accept')).length
+  const completion = typeof student.__profileCompletion === 'number' ? student.__profileCompletion : 0
+  const mentor = student.__mentor || 'Unassigned'
 
   return (
-    <article className="student-card">
-      <div className="student-card__media">
-        <Avatar
-          name={student.fullName}
-          photoUrl={student.photoUrl}
-          size="lg"
-          className="student-card__avatar-el"
-        />
-        <span className={`vis-chip ${profilePublic ? 'vis-chip--public' : 'vis-chip--private'} student-card__vis`}>
-          {profilePublic ? '🌐 Public' : '🔒 Private'}
-        </span>
-        {publicCount > 0 && (
-          <span className="student-card__public-tag">🌐 {publicCount} public</span>
-        )}
-      </div>
+    <article className="student-card student-card--enhanced">
+      <button
+        type="button"
+        className="student-card__click-area"
+        onClick={() => onOpen(student)}
+        aria-label={`Manage ${student.fullName || 'student'}`}
+      >
+        <div className="student-card__media">
+          <Avatar
+            name={student.fullName}
+            photoUrl={student.photoUrl}
+            size="lg"
+            className="student-card__avatar-el"
+          />
+          <span className={`vis-chip ${profilePublic ? 'vis-chip--public' : 'vis-chip--private'} student-card__vis`}>
+            {profilePublic ? '🌐 Public' : '🔒 Private'}
+          </span>
+          {publicCount > 0 && (
+            <span className="student-card__public-tag">🌐 {publicCount} public</span>
+          )}
+        </div>
 
-      <div className="student-card__body">
-        <div className="student-card__identity">
-          <div>
-            <h4>{student.fullName}</h4>
-            <span className="student-card__id">{student.id ? String(student.id).slice(0, 8).toUpperCase() : 'STUDENT'}</span>
+        <div className="student-card__body">
+          <div className="student-card__identity">
+            <h4>{student.fullName || 'Unnamed Student'}</h4>
+            <p>
+              {student.major || 'Major not set'}
+              {student.university ? ` · ${student.university}` : ''}
+            </p>
+          </div>
+
+          <div className="student-card__metrics">
+            <div><span>Applications</span><strong>{apps.length}</strong></div>
+            <div><span>Accepted</span><strong>{accepted}</strong></div>
+            <div><span>Profile</span><strong>{completion}%</strong></div>
+          </div>
+
+          <div className="student-card__meta">
+            <span><small>Mentor</small>{mentor}</span>
+            <span><small>Decision</small>{student.decision || 'Pending'}</span>
           </div>
         </div>
-        <p className="student-card__major">{student.major || 'Major not set'}</p>
-        <p className="student-card__university">{student.university || 'University not set'}</p>
-        <div className="student-card__metrics">
-          <div><span>Apps</span><strong>{student.applications?.length || 0}</strong></div>
-          <div><span>Accepted</span><strong className="student-card__accepted">{acceptedApplications}</strong></div>
-          <div><span>Profile</span><strong>{student.isProfileCompleted ? '100%' : 'Needs work'}</strong></div>
-        </div>
-        <div className="student-card__footer">
-          <span className="student-card__mentor">Mentor: {student.assignedCounselor || 'Unassigned'}</span>
-          <div className="student-card__actions">
-            <button type="button" className="student-card__manage" onClick={manageStudent}>Manage</button>
-            <button type="button" className="student-card__view" onClick={openStudentProfile}>View Profile <span>→</span></button>
-          </div>
-        </div>
+      </button>
+
+      <div className="student-card__actions student-card__actions--single">
+        <button type="button" className="solid-btn solid-btn--sm" onClick={() => onOpen(student)}>
+          Manage Student
+        </button>
       </div>
     </article>
   )
 }
+
 function Pagination({ currentPage, totalPages, setCurrentPage }) {
   const pages = useMemo(() => {
     if (totalPages <= 7) {
@@ -949,8 +953,11 @@ export default function AdminDashboard() {
   const [filterUniversity, setFilterUniversity] = useState('all')
   const [filterGender, setFilterGender] = useState('all')
   const [filterDecision, setFilterDecision] = useState('all')
+  const [filterProfileStatus, setFilterProfileStatus] = useState('all')
+  const [filterMentor, setFilterMentor] = useState('all')
+  const [filterAppStatus, setFilterAppStatus] = useState('all')
   const [searchQuery, setSearchQuery] = useState('')
-  const [sortBy, setSortBy] = useState('newest')
+  const [sortBy, setSortBy] = useState('name_asc')
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedStudentId, setSelectedStudentId] = useState(null)
   const [activeTab, setActiveTab] = useState('profile')
@@ -1035,29 +1042,85 @@ export default function AdminDashboard() {
     return () => window.removeEventListener('keydown', handleEscape)
   }, [selectedStudentId])
 
+  const profileCompletion = (student) => {
+    const explicit = Number(student.profileCompletion ?? student.profile_completion)
+    if (Number.isFinite(explicit) && explicit >= 0 && explicit <= 100) return explicit
+
+    const checks = [
+      !!student.fullName,
+      !!student.email,
+      !!student.phone,
+      !!student.major,
+      !!student.university,
+      !!student.gender,
+      Array.isArray(student.applications) && student.applications.length > 0,
+      Array.isArray(student.licenses) && student.licenses.length > 0,
+    ]
+    return Math.round((checks.filter(Boolean).length / checks.length) * 100)
+  }
+
+  const studentMentor = (student) =>
+    student.mentorName || student.mentor || student.assignedCounselor || student.assigned_counselor || 'Unassigned'
+
+  const studentApplicationCount = (student) => (student.applications || []).length
+  const acceptedApplicationCount = (student) =>
+    (student.applications || []).filter((a) => String(a.decision || '').toLowerCase().includes('accept')).length
+
   const filteredStudents = useMemo(() => {
-    let result = [...students]
     const query = searchQuery.trim().toLowerCase()
+    const result = students.filter((s) => {
+      const haystack = [s.fullName, s.email, s.id, s.major, s.university]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
 
-    if (query) {
-      result = result.filter((s) =>
-        [s.fullName, s.email, s.major, s.university, s.assignedCounselor]
-          .filter(Boolean)
-          .some((value) => String(value).toLowerCase().includes(query)),
-      )
-    }
-    if (filterMajor !== 'all') result = result.filter((s) => s.major === filterMajor)
-    if (filterUniversity !== 'all') result = result.filter((s) => s.university === filterUniversity)
-    if (filterGender !== 'all') result = result.filter((s) => s.gender === filterGender)
-    if (filterDecision !== 'all') result = result.filter((s) => s.decision === filterDecision)
+      if (query && !haystack.includes(query)) return false
+      if (filterMajor !== 'all' && s.major !== filterMajor) return false
+      if (filterUniversity !== 'all' && s.university !== filterUniversity) return false
+      if (filterGender !== 'all' && s.gender !== filterGender) return false
+      if (filterDecision !== 'all' && s.decision !== filterDecision) return false
 
-    if (sortBy === 'name') result.sort((a, b) => (a.fullName || '').localeCompare(b.fullName || ''))
-    if (sortBy === 'applications') result.sort((a, b) => (b.applications?.length || 0) - (a.applications?.length || 0))
-    if (sortBy === 'completion') result.sort((a, b) => Number(b.isProfileCompleted) - Number(a.isProfileCompleted))
-    if (sortBy === 'newest') result.sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')))
+      const profileStatus = profileCompletion(s) >= 80 ? 'complete' : 'incomplete'
+      if (filterProfileStatus !== 'all' && profileStatus !== filterProfileStatus) return false
 
-    return result
-  }, [students, searchQuery, filterMajor, filterUniversity, filterGender, filterDecision, sortBy])
+      if (filterMentor !== 'all' && studentMentor(s) !== filterMentor) return false
+
+      if (filterAppStatus !== 'all') {
+        const hasStatus = (s.applications || []).some((a) => a.status === filterAppStatus)
+        if (!hasStatus) return false
+      }
+
+      return true
+    })
+
+    return result.sort((a, b) => {
+      switch (sortBy) {
+        case 'name_desc':
+          return String(b.fullName || '').localeCompare(String(a.fullName || ''))
+        case 'applications_desc':
+          return studentApplicationCount(b) - studentApplicationCount(a)
+        case 'accepted_desc':
+          return acceptedApplicationCount(b) - acceptedApplicationCount(a)
+        case 'completion_desc':
+          return profileCompletion(b) - profileCompletion(a)
+        case 'gpa_desc':
+          return Number(b.gpa ?? b.GPA ?? 0) - Number(a.gpa ?? a.GPA ?? 0)
+        default:
+          return String(a.fullName || '').localeCompare(String(b.fullName || ''))
+      }
+    })
+  }, [
+    students,
+    searchQuery,
+    filterMajor,
+    filterUniversity,
+    filterGender,
+    filterDecision,
+    filterProfileStatus,
+    filterMentor,
+    filterAppStatus,
+    sortBy,
+  ])
 
   const majorData = useMemo(() => toPercentMap(buildCounts(filteredStudents, 'major')), [filteredStudents])
   const universityData = useMemo(() => toPercentMap(buildCounts(filteredStudents, 'university')), [filteredStudents])
@@ -1072,20 +1135,85 @@ export default function AdminDashboard() {
     return filteredStudents.slice(start, start + studentsPerPage)
   }, [filteredStudents, currentPage])
 
-  const majors = [...new Set(students.map((s) => s.major))]
-  const universities = [...new Set(students.map((s) => s.university))]
-  const genders = [...new Set(students.map((s) => s.gender))]
-  const decisions = [...new Set(students.map((s) => s.decision))]
+  const majors = [...new Set(students.map((s) => s.major).filter(Boolean))]
+  const universities = [...new Set(students.map((s) => s.university).filter(Boolean))]
+  const genders = [...new Set(students.map((s) => s.gender).filter(Boolean))]
+  const decisions = [...new Set(students.map((s) => s.decision).filter(Boolean))]
+  const mentors = [...new Set(students.map(studentMentor).filter(Boolean))]
+  const applicationStatuses = [
+    ...new Set(students.flatMap((s) => (s.applications || []).map((a) => a.status)).filter(Boolean)),
+  ]
 
-  const dashboardMetrics = useMemo(() => {
-    const applications = students.reduce((sum, s) => sum + (s.applications?.length || 0), 0)
-    const accepted = students.reduce((sum, s) => sum + (s.applications || []).filter((a) => a.decision === 'Accepted').length, 0)
-    const pending = students.reduce((sum, s) => sum + (s.applications || []).filter((a) => ['Pending', 'In Review', 'In Progress'].includes(a.decision) || ['In Review', 'In Progress'].includes(a.status)).length, 0)
-    const completed = students.filter((s) => s.isProfileCompleted).length
-    const incomplete = students.length - completed
-    const upcoming = students.reduce((sum, s) => sum + (s.applications || []).filter((a) => a.deadline && new Date(a.deadline) >= new Date() && new Date(a.deadline) <= new Date(Date.now() + 1000 * 60 * 60 * 24 * 14)).length, 0)
-    const missingDocs = students.reduce((sum, s) => sum + (s.applications || []).filter((a) => !a.documents || Object.values(a.documents).every((v) => !Array.isArray(v) || v.length === 0)).length, 0)
-    return { applications, accepted, pending, completed, incomplete, upcoming, missingDocs }
+  const attentionItems = useMemo(() => {
+    const items = []
+
+    students.forEach((student) => {
+      const completion = profileCompletion(student)
+      if (completion < 80) {
+        items.push({
+          id: `profile-${student.id}`,
+          icon: '🧩',
+          title: `${student.fullName || 'Student'} has an incomplete profile`,
+          meta: `${completion}% complete`,
+          studentId: student.id,
+        })
+      }
+
+      ;(student.applications || []).forEach((app) => {
+        if (!app.deadline) return
+        const deadline = new Date(app.deadline)
+        if (Number.isNaN(deadline.getTime())) return
+        const days = Math.ceil((deadline.getTime() - Date.now()) / 86400000)
+        if (days >= 0 && days <= 14 && app.status !== 'Closed') {
+          items.push({
+            id: `deadline-${student.id}-${app.id}`,
+            icon: '⏰',
+            title: `${app.university || 'Application'} deadline is approaching`,
+            meta: `${student.fullName || 'Student'} · ${days === 0 ? 'Today' : `${days} day${days === 1 ? '' : 's'}`}`,
+            studentId: student.id,
+          })
+        }
+      })
+
+      const hasApps = (student.applications || []).length > 0
+      if (hasApps) {
+        const missingDocuments = (student.applications || []).some((app) => {
+          const docs = app.documents || {}
+          return Object.values(docs).flat().length === 0
+        })
+        if (missingDocuments) {
+          items.push({
+            id: `docs-${student.id}`,
+            icon: '📄',
+            title: `${student.fullName || 'Student'} may be missing application documents`,
+            meta: 'Review application documents',
+            studentId: student.id,
+          })
+        }
+      }
+    })
+
+    return items.slice(0, 8)
+  }, [students])
+
+  const metrics = useMemo(() => {
+    const active = students.filter((s) => (s.visibility?.profile || 'private') !== 'archived').length
+    const applications = students.reduce((sum, s) => sum + studentApplicationCount(s), 0)
+    const accepted = students.reduce((sum, s) => sum + acceptedApplicationCount(s), 0)
+    const pending = students.reduce(
+      (sum, s) => sum + (s.applications || []).filter((a) => String(a.decision || '').toLowerCase() === 'pending').length,
+      0,
+    )
+    const complete = students.filter((s) => profileCompletion(s) >= 80).length
+
+    return {
+      total: students.length,
+      active,
+      applications,
+      accepted,
+      pending,
+      completion: students.length ? Math.round((complete / students.length) * 100) : 0,
+    }
   }, [students])
 
   function clearFilters() {
@@ -1094,9 +1222,15 @@ export default function AdminDashboard() {
     setFilterUniversity('all')
     setFilterGender('all')
     setFilterDecision('all')
-    setSortBy('newest')
-    setCurrentPage(1)
+    setFilterProfileStatus('all')
+    setFilterMentor('all')
+    setFilterAppStatus('all')
+    setSortBy('name_asc')
   }
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery, filterMajor, filterUniversity, filterGender, filterDecision, filterProfileStatus, filterMentor, filterAppStatus, sortBy])
 
   function openStudent(student) {
     setSelectedStudentId(student.id)
@@ -1542,103 +1676,235 @@ function removeDocumentFromStudentApplication(prevStudents, studentId, applicati
   }
 
   return (
-    <div className="app-shell admin-modern">
+    <div className="app-shell">
       <div className="ambient ambient--one"></div>
       <div className="ambient ambient--two"></div>
 
-      <aside className="admin-sidebar">
-        <div className="admin-brand"><span className="admin-brand__mark">◈</span><span>AppTrack</span></div>
-        <button className="sidebar-link sidebar-link--active">⌂ <span>Dashboard</span></button>
-        <div className="sidebar-label">MANAGE</div>
-        {['All Students', 'Applications', 'Documents', 'Education', 'Licenses', 'Projects', 'Certificates', 'Skills', 'Experience'].map((item) => (
-          <button key={item} className="sidebar-link">{item === 'All Students' ? '♙' : item === 'Applications' ? '▣' : item === 'Documents' ? '▤' : item === 'Education' ? '⌂' : item === 'Licenses' ? '▥' : item === 'Projects' ? '◇' : item === 'Certificates' ? '✧' : item === 'Skills' ? '♧' : '◌'} <span>{item}</span></button>
-        ))}
-        <div className="sidebar-label">MENTORS</div>
-        <button className="sidebar-link">♙ <span>Mentors</span></button>
-        <button className="sidebar-link">◇ <span>Mentor Requests</span></button>
-        <div className="sidebar-label">COMMUNICATION</div>
-        <button className="sidebar-link" onClick={() => setNotifOpen(true)}>♧ <span>Notifications</span>{notifCount > 0 && <b>{notifCount}</b>}</button>
-        <div className="sidebar-label">SYSTEM</div>
-        <button className="sidebar-link">⚙ <span>Settings</span></button>
-        <button className="sidebar-link">▧ <span>Reports</span></button>
-      </aside>
+      <header className="topbar">
+        <div>
+          <h1 className="topbar__title">Student Manager</h1>
+          <p className="topbar__subtitle">
+            Admin overview, private editing access, and student application control
+          </p>
+        </div>
 
-      <div className="admin-main">
-        <header className="topbar">
+        <div className="topbar-actions">
+          <button type="button" className="ghost-btn ghost-btn--sm topbar-nav-btn" onClick={() => navigate('/home-page')}>Home</button>
+          <button type="button" className="ghost-btn ghost-btn--sm topbar-nav-btn" onClick={() => navigate('/student')}>My Profile</button>
+          <button className="notification-btn" onClick={() => setNotifOpen(true)}>
+
+
+            <span className="notification-btn__icon">🔔</span>
+            Notifications
+            {notifCount > 0 && <span className="notification-btn__count">{notifCount}</span>}
+          </button>
+          <button
+            type="button"
+            className="notification-btn"
+            onClick={async () => {
+              await signOut()
+              navigate('/')
+            }}
+            style={{ background: 'linear-gradient(135deg, #dc2626, #b91c1c)', padding: '10px 16px' }}
+          >
+            Sign out
+          </button>
+        </div>
+      </header>
+
+      <main className="dashboard-content admin-dashboard-v2">
+        <section className="admin-welcome">
           <div>
-            <h1 className="topbar__title">Admin Dashboard</h1>
-            <p className="topbar__subtitle">Welcome back, Admin 👋</p>
+            <p className="section-label">ADMIN OVERVIEW</p>
+            <h2>Keep every student moving forward.</h2>
+            <p>Monitor applications, spot issues early, and open any student workspace from one place.</p>
           </div>
-          <div className="topbar__actions">
-            <label className="global-search">
-              <span>⌕</span>
-              <input value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1) }} placeholder="Search students by name, email or ID..." />
-            </label>
-            <button className="header-icon-btn" onClick={() => setNotifOpen(true)}>♧{notifCount > 0 && <span>{notifCount}</span>}</button>
-            <button className="header-icon-btn">?</button>
-            <button className="admin-user">
-              <Avatar name="Admin" size="sm" />
-              <span><strong>Admin</strong><small>Administrator</small></span>⌄
-            </button>
-            <button className="signout-btn" onClick={async () => { await signOut(); navigate('/') }}>Sign out</button>
+          <div className="admin-welcome__actions">
+            <button type="button" className="ghost-btn" onClick={() => navigate('/home-page')}>Home</button>
+            <button type="button" className="solid-btn" onClick={() => navigate('/student')}>My Profile</button>
           </div>
-        </header>
+        </section>
 
-        <main className="dashboard-content">
-          <section className="metric-grid">
-            <div className="metric-card"><span className="metric-icon">♙</span><span>Total Students</span><strong>{students.length}</strong><small>All registered students</small></div>
-            <div className="metric-card"><span className="metric-icon">◉</span><span>Active Students</span><strong>{students.filter((s) => s.isProfileCompleted).length}</strong><small>{students.length ? Math.round((students.filter((s) => s.isProfileCompleted).length / students.length) * 100) : 0}% of total</small></div>
-            <div className="metric-card"><span className="metric-icon">▣</span><span>Applications</span><strong>{dashboardMetrics.applications}</strong><small>Across all students</small></div>
-            <div className="metric-card metric-card--green"><span className="metric-icon">✓</span><span>Accepted</span><strong>{dashboardMetrics.accepted}</strong><small>Accepted applications</small></div>
-            <div className="metric-card metric-card--orange"><span className="metric-icon">◷</span><span>Pending</span><strong>{dashboardMetrics.pending}</strong><small>Need follow-up</small></div>
-            <div className="metric-card"><span className="metric-icon">◌</span><span>Profile Completion</span><strong>{students.length ? Math.round((dashboardMetrics.completed / students.length) * 100) : 0}%</strong><small>Average completion</small></div>
-          </section>
+        <section className="admin-metrics-grid">
+          {[
+            ['Total Students', metrics.total, '👥'],
+            ['Active Students', metrics.active, '⚡'],
+            ['Applications', metrics.applications, '🎓'],
+            ['Accepted', metrics.accepted, '✅'],
+            ['Pending Decisions', metrics.pending, '⏳'],
+            ['Profile Completion', `${metrics.completion}%`, '📈'],
+          ].map(([label, value, icon]) => (
+            <article key={label} className="admin-metric-card">
+              <span className="admin-metric-card__icon">{icon}</span>
+              <span className="admin-metric-card__label">{label}</span>
+              <strong>{value}</strong>
+            </article>
+          ))}
+        </section>
 
-          <section className="overview-grid">
-            <div className="charts-grid charts-grid--four">
+        <section className="admin-overview-grid">
+          <div className="admin-overview-panel">
+            <div className="section-head">
+              <div>
+                <h3>Attention Required</h3>
+                <p className="section-head__sub">The students and applications that need a closer look.</p>
+              </div>
+              <span className="count-pill">{attentionItems.length}</span>
+            </div>
+
+            {attentionItems.length ? (
+              <div className="attention-list">
+                {attentionItems.map((item) => (
+                  <button
+                    type="button"
+                    className="attention-item"
+                    key={item.id}
+                    onClick={() => {
+                      const student = students.find((s) => s.id === item.studentId)
+                      if (student) openStudent(student)
+                    }}
+                  >
+                    <span className="attention-item__icon">{item.icon}</span>
+                    <span className="attention-item__copy">
+                      <strong>{item.title}</strong>
+                      <small>{item.meta}</small>
+                    </span>
+                    <span className="attention-item__arrow">→</span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="empty-state empty-state--compact">
+                <div className="empty-state__icon">✓</div>
+                <h4>Nothing urgent</h4>
+                <p>Your current students don't have obvious issues requiring attention.</p>
+              </div>
+            )}
+          </div>
+
+          <div className="admin-overview-panel">
+            <div className="section-head">
+              <div>
+                <h3>Student Analytics</h3>
+                <p className="section-head__sub">Use the charts to understand your student population.</p>
+              </div>
+            </div>
+            <div className="charts-grid charts-grid--dashboard">
               <PieChartCard title="Major Distribution" data={majorData} />
               <PieChartCard title="University Distribution" data={universityData} />
               <PieChartCard title="Gender Distribution" data={genderData} />
               <PieChartCard title="Decision Rate" data={decisionData} />
             </div>
-            <aside className="attention-card">
-              <div className="side-card__head"><h3>Attention Required</h3><b>{dashboardMetrics.incomplete + dashboardMetrics.upcoming}</b></div>
-              <div className="attention-list">
-                <div><span>▣</span><p>Incomplete Profiles</p><b>{dashboardMetrics.incomplete}</b></div>
-                <div><span>◷</span><p>Upcoming Deadlines</p><b>{dashboardMetrics.upcoming}</b></div>
-                <div><span>▤</span><p>Missing Documents</p><b>{dashboardMetrics.missingDocs}</b></div>
-                <div><span>♙</span><p>Visibility Requests</p><b>{notifications.filter((n) => n.status === 'pending').length}</b></div>
-              </div>
-              <button className="side-card__action" onClick={() => setNotifOpen(true)}>View All</button>
-            </aside>
-          </section>
+          </div>
+        </section>
 
-          <section className="students-section">
-            <div className="filters-panel">
-              <div className="filter-row">
-                <label className="filter-search"><span>⌕</span><input value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1) }} placeholder="Search students..." /></label>
-                <select value={filterMajor} onChange={(e) => { setFilterMajor(e.target.value); setCurrentPage(1) }}><option value="all">All Majors</option>{majors.map((item) => <option key={item} value={item}>{item}</option>)}</select>
-                <select value={filterUniversity} onChange={(e) => { setFilterUniversity(e.target.value); setCurrentPage(1) }}><option value="all">All Universities</option>{universities.map((item) => <option key={item} value={item}>{item}</option>)}</select>
-                <select value={filterGender} onChange={(e) => { setFilterGender(e.target.value); setCurrentPage(1) }}><option value="all">All Genders</option>{genders.map((item) => <option key={item} value={item}>{item}</option>)}</select>
-                <select value={filterDecision} onChange={(e) => { setFilterDecision(e.target.value); setCurrentPage(1) }}><option value="all">All Decisions</option>{decisions.map((item) => <option key={item} value={item}>{item}</option>)}</select>
-              </div>
-              <div className="filter-row filter-row--second">
-                <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}><option value="newest">Newest Students</option><option value="name">Name A–Z</option><option value="applications">Most Applications</option><option value="completion">Profile Completion</option></select>
-                <button className="clear-filters-btn" onClick={clearFilters}>Clear Filters</button>
-              </div>
-              {(searchQuery || filterMajor !== 'all' || filterUniversity !== 'all' || filterGender !== 'all' || filterDecision !== 'all') && (
-                <div className="active-filters"><strong>Active Filters:</strong>{searchQuery && <span>Search: {searchQuery} ×</span>}{filterMajor !== 'all' && <span>{filterMajor} ×</span>}{filterUniversity !== 'all' && <span>{filterUniversity} ×</span>}{filterGender !== 'all' && <span>{filterGender} ×</span>}{filterDecision !== 'all' && <span>{filterDecision} ×</span>}<button onClick={clearFilters}>Clear all</button></div>
-              )}
+        <section className="students-section admin-students-panel">
+          <div className="section-head section-head--stack admin-students-head">
+            <div>
+              <p className="section-label">STUDENT MANAGEMENT</p>
+              <h3>Students</h3>
+              <p className="section-head__sub">Search, filter and open the full management workspace for any student.</p>
             </div>
-
-            <div className="students-grid">
-              {currentStudents.length ? currentStudents.map((student) => <StudentCard key={student.id} student={student} onOpen={openStudent} />) : <div className="empty-students"><div>⌕</div><h3>No students found</h3><p>Try changing your filters or search.</p><button onClick={clearFilters}>Clear filters</button></div>}
+            <div className="admin-results-summary">
+              Showing <strong>{currentStudents.length}</strong> of <strong>{filteredStudents.length}</strong>
             </div>
+          </div>
 
-            <div className="student-list-footer"><span>Showing {filteredStudents.length ? (currentPage - 1) * studentsPerPage + 1 : 0} to {Math.min(currentPage * studentsPerPage, filteredStudents.length)} of {filteredStudents.length} students</span><Pagination currentPage={currentPage} totalPages={totalPages} setCurrentPage={setCurrentPage} /></div>
-          </section>
-        </main>
-      </div>
+          <div className="admin-search-row">
+            <label className="admin-search">
+              <span>⌕</span>
+              <input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search by name, email, student ID, major or university..."
+                aria-label="Search students"
+              />
+            </label>
+            <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} aria-label="Sort students">
+              <option value="name_asc">Name A–Z</option>
+              <option value="name_desc">Name Z–A</option>
+              <option value="applications_desc">Most applications</option>
+              <option value="accepted_desc">Most accepted</option>
+              <option value="completion_desc">Profile completion</option>
+              <option value="gpa_desc">Highest GPA</option>
+            </select>
+          </div>
+
+          <div className="filters-bar filters-bar--advanced">
+            <select value={filterMajor} onChange={(e) => setFilterMajor(e.target.value)}>
+              <option value="all">All Majors</option>
+              {majors.map((item) => <option key={item} value={item}>{item}</option>)}
+            </select>
+
+            <select value={filterUniversity} onChange={(e) => setFilterUniversity(e.target.value)}>
+              <option value="all">All Universities</option>
+              {universities.map((item) => <option key={item} value={item}>{item}</option>)}
+            </select>
+
+            <select value={filterGender} onChange={(e) => setFilterGender(e.target.value)}>
+              <option value="all">All Genders</option>
+              {genders.map((item) => <option key={item} value={item}>{item}</option>)}
+            </select>
+
+            <select value={filterDecision} onChange={(e) => setFilterDecision(e.target.value)}>
+              <option value="all">All Decisions</option>
+              {decisions.map((item) => <option key={item} value={item}>{item}</option>)}
+            </select>
+
+            <select value={filterProfileStatus} onChange={(e) => setFilterProfileStatus(e.target.value)}>
+              <option value="all">All Profile Statuses</option>
+              <option value="complete">Complete</option>
+              <option value="incomplete">Needs Attention</option>
+            </select>
+
+            <select value={filterMentor} onChange={(e) => setFilterMentor(e.target.value)}>
+              <option value="all">All Mentors</option>
+              {mentors.map((item) => <option key={item} value={item}>{item}</option>)}
+            </select>
+
+            <select value={filterAppStatus} onChange={(e) => setFilterAppStatus(e.target.value)}>
+              <option value="all">All Application Statuses</option>
+              {applicationStatuses.map((item) => <option key={item} value={item}>{item}</option>)}
+            </select>
+
+            <button type="button" className="ghost-btn ghost-btn--sm" onClick={clearFilters}>Clear all</button>
+          </div>
+
+          <div className="active-filter-row">
+            {searchQuery && <button type="button" className="filter-chip" onClick={() => setSearchQuery('')}>Search: {searchQuery} ×</button>}
+            {filterMajor !== 'all' && <button type="button" className="filter-chip" onClick={() => setFilterMajor('all')}>Major: {filterMajor} ×</button>}
+            {filterUniversity !== 'all' && <button type="button" className="filter-chip" onClick={() => setFilterUniversity('all')}>University: {filterUniversity} ×</button>}
+            {filterGender !== 'all' && <button type="button" className="filter-chip" onClick={() => setFilterGender('all')}>Gender: {filterGender} ×</button>}
+            {filterDecision !== 'all' && <button type="button" className="filter-chip" onClick={() => setFilterDecision('all')}>Decision: {filterDecision} ×</button>}
+            {filterProfileStatus !== 'all' && <button type="button" className="filter-chip" onClick={() => setFilterProfileStatus('all')}>Profile: {filterProfileStatus} ×</button>}
+            {filterMentor !== 'all' && <button type="button" className="filter-chip" onClick={() => setFilterMentor('all')}>Mentor: {filterMentor} ×</button>}
+            {filterAppStatus !== 'all' && <button type="button" className="filter-chip" onClick={() => setFilterAppStatus('all')}>Application: {filterAppStatus} ×</button>}
+          </div>
+
+          <div className="students-grid students-grid--enhanced">
+            {currentStudents.length ? currentStudents.map((student) => (
+              <StudentCard
+                key={student.id}
+                student={{ ...student, __profileCompletion: profileCompletion(student), __mentor: studentMentor(student) }}
+                onOpen={openStudent}
+              />
+            )) : (
+              <div className="empty-state empty-state--wide">
+                <div className="empty-state__icon">⌕</div>
+                <h4>No students found</h4>
+                <p>Try changing your search or filters.</p>
+                <button type="button" className="solid-btn solid-btn--sm" onClick={clearFilters}>Clear filters</button>
+              </div>
+            )}
+          </div>
+
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            setCurrentPage={setCurrentPage}
+          />
+        </section>
+      </main>
 
       <PublicStudentDrawer
       student={selectedStudent}
